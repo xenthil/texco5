@@ -1,0 +1,83 @@
+﻿module.exports.login = function (username, email, mobile, password, usertypeid, changedby, referenceid) {
+    this.username = username;
+    this.email = email;
+    this.mobile = mobile;
+    this.password = password;
+    this.usertypeid = usertypeid;
+    this.changedby = changedby;
+    this.referenceid = referenceid;
+};
+
+module.exports.member = function (firstname, lastname, dob, gender, email, mobile, addressline1, addressline2, addressline3, talukid, stateid, countryid, pincode, aadharno, panno, drivinglicenseno, exservicemenno, rationcardno, voteridno, dischargebook, PPOno, trade , cadre, wage, changedby, texcono, registrationno, taluk, state, country) {
+    this.firstname = firstname;
+    this.lastname = lastname;
+    this.dob = dob;
+    this.gender = gender;
+    this.email = email;
+    this.mobile = mobile;
+    this.addressline1 = addressline1;
+    this.addressline2 = addressline2;
+    this.addressline3 = addressline3;
+    this.talukid = talukid;
+    this.stateid = stateid;
+    this.countryid = countryid;
+    this.pincode = pincode;
+    this.aadharno = aadharno;
+    this.panno = panno;
+    this.drivinglicenseno = drivinglicenseno;
+    this.exservicemenno = exservicemenno;
+    this.rationcardno = rationcardno;
+    this.voteridno = voteridno;
+    this.dischargebook = dischargebook;
+    this.PPOno = PPOno;
+    this.trade = trade;
+    this.cadre = cadre;
+    this.wage = wage;
+    this.texcono = texcono;
+    this.registrationno = registrationno;
+    this.taluk = taluk;
+    this.state = state;
+    this.country = country;
+};
+
+module.exports.employee = function (firstname, lastname, dob, gender, email, mobile, addressline1, addressline2, addressline3, talukid, stateid, countryid, pincode, doj, roleid, changedby, role, taluk, state, country) {
+    this.firstname = firstname;
+    this.lastname = lastname;
+    this.dob = dob;
+    this.gender = gender;
+    this.email = email;
+    this.mobile = mobile;
+    this.addressline1 = addressline1;
+    this.addressline2 = addressline2;
+    this.addressline3 = addressline3;
+    this.talukid = talukid;
+    this.stateid = stateid;
+    this.countryid = countryid;
+    this.pincode = pincode;
+    this.doj = doj;
+    this.roleid = roleid;
+    this.changedby = changedby;
+    this.role = role;
+    this.taluk = taluk;
+    this.state = state;
+    this.country = country;
+};
+
+module.exports.client = function (oranization, contactperson, email, mobile, addressline1, addressline2, addressline3, talukid, stateid, countryid, pincode, changedby, clientid, taluk, state, country) {
+    this.oranization = oranization;
+    this.contactperson = contactperson;
+    this.email = email;
+    this.mobile = mobile;
+    this.addressline1 = addressline1;
+    this.addressline2 = addressline2;
+    this.addressline3 = addressline3;
+    this.talukid = talukid;
+    this.stateid = stateid;
+    this.countryid = countryid;
+    this.pincode = pincode;
+    this.changedby = changedby;
+    this.clientid = clientid;
+    this.taluk = taluk;
+    this.state = state;
+    this.country = country;
+};

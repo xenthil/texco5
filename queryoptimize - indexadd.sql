@@ -1,0 +1,10 @@
+ALTER TABLE `client` ADD INDEX `client_idx_active_clientid` (`active`,`clientid`);
+ALTER TABLE `jobactivity` ADD INDEX `jobactivity_idx_active_jobposting_jobstatusc` (`active`,`jobpostingdetailid`,`jobstatuscode`);
+ALTER TABLE `jobpostingdetail` ADD INDEX `jobpostingdetail_idx_active_jobmasterid` (`active`,`jobmasterid`);
+ALTER TABLE `lookupvalue` ADD INDEX `lookupvalue_idx_active_lkdmnco_lkvalid_code` (`active`,`lkdmncode`,`lkvalid`,`code`);
+ALTER TABLE `member` ADD INDEX `member_idx_active_memberid` (`active`,`memberid`); 
+Alter table project add index `idx__projectno`(`projectno`); 
+Alter table agreement add index `idx__active`(`active`);
+Alter table jobactivity add index `idx__jobstatuscode`(`jobstatuscode`);
+Alter table agreementdetail add index `idx__agreementinfoid_jobmasterid_active`(`agreementinfoid`, `jobmasterid`, `active`);
+Alter table client add index `idx__mobile_password_active`(`mobile`, `password`, `active`);

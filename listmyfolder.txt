@@ -1,0 +1,27 @@
+ Volume in drive C has no label.
+ Volume Serial Number is E498-D82D
+
+ Directory of C:\Inetpub\vhosts\texco.in\httpdocs
+
+19-05-2018  05:02 AM    <DIR>          .
+19-05-2018  05:02 AM    <DIR>          ..
+29-10-2017  05:08 PM               317 .editorconfig
+29-10-2017  05:08 PM               533 .gitignore
+02-04-2018  12:29 AM               147 .user.ini
+01-04-2018  11:39 PM    <DIR>          application
+18-05-2018  07:25 AM    <DIR>          assets
+29-03-2018  04:39 AM           107,275 backup2903.zip
+29-10-2017  05:08 PM               616 composer.json
+29-10-2017  05:08 PM             6,598 contributing.md
+28-01-2018  04:26 PM           190,950 favicon.ico
+29-10-2017  05:08 PM            10,568 index.php
+29-10-2017  05:08 PM             1,134 license.txt
+19-05-2018  05:02 AM                 0 listmyfolder.txt
+06-04-2018  12:41 AM        72,289,808 live backup06-04-18.zip
+30-03-2018  05:26 AM        70,628,298 live-backup.zip
+29-10-2017  05:08 PM             2,423 readme.rst
+29-03-2018  05:35 AM    <DIR>          system
+29-03-2018  05:23 AM        95,002,197 texco-live.zip
+04-05-2018  10:16 PM             2,025 web.config
+              15 File(s)    238,242,889 bytes
+               5 Dir(s)  68,837,318,656 bytes free

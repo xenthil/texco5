@@ -1,0 +1,10 @@
+[
+    "example.com",
+    "api.example.com",
+    "localhost:80",
+    "localhost:8080",
+    "localhost:8030",
+    "localhost",
+    "127.0.0.1",
+    "192.168.1.1"
+]

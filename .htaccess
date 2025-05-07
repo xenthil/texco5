@@ -1,0 +1,33 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+    
+    # Handle OPTIONS requests for CORS preflight
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ $1 [R=200,L]
+    
+    # If the requested file or directory doesn't exist, route to index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php/$1 [L]
+</IfModule>
+
+# Add CORS headers for OPTIONS requests
+<IfModule mod_headers.c>
+    <FilesMatch ".(php)$">
+        SetEnvIf Origin "^http(s)?://(.+\.)?(localhost:80|localhost:8080|localhost:8030|13\.126\.144\.36|yourdomain\.com)$" CORS_ALLOW_ORIGIN=$0
+        Header set Access-Control-Allow-Origin %{CORS_ALLOW_ORIGIN}e env=CORS_ALLOW_ORIGIN
+        Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" env=CORS_ALLOW_ORIGIN
+        Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With" env=CORS_ALLOW_ORIGIN
+        Header set Access-Control-Allow-Credentials "true" env=CORS_ALLOW_ORIGIN
+        
+        # Handle preflight OPTIONS requests
+        Header set Access-Control-Max-Age "86400" env=CORS_ALLOW_ORIGIN
+        Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" env=CORS_ALLOW_ORIGIN
+    </FilesMatch>
+</IfModule>
+
+# Disable caching for pages with sensitive data (like raw IDs)
+<FilesMatch "\.(php|html)$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+</FilesMatch>

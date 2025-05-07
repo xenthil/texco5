@@ -1,0 +1,3810 @@
+﻿var fs = require('fs');
+var app = require('./../app');
+var nconf = require('./../Utils/EnvironmentUtil')
+var memberDal = require('../DAL/memberDAL');
+var clientDal = require('./../DAL/clientDAL');
+var jobDal = require('./../DAL/jobDAL');
+var jobBal = require('./../BAL/jobBAL');
+var settingDal = require('./../DAL/settingDAL');
+var jobModel = require('./../Model/job');
+var agreementBal = require('./../BAL/agreementBAL');
+var _this = this;
+var _ = require('underscore');
+var emailBal = require('../BAL/emailBAL');
+var request = require('request');
+var moment = require('moment');
+const http = require('http');
+var filepathh = nconf.get('NODEERRORURL');
+var smslogpath = nconf.get('FOLDERURL');
+var logger = require('../DAL/logger').createLogger(filepathh);
+logger.setLevel('debug');
+
+var smslogger = require('../DAL/logger').createLogger(smslogpath+"smslog.log");
+smslogger.setLevel('info');
+
+
+module.exports.createjobmaster = function (jobmaster) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.createjobmaster(jobmaster).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.updatejobmaster = function (jobmaster, jobmasterid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.updatejobmaster(jobmaster, jobmasterid).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.updatejobmasterstatus = function (jobmasterid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.updatejobmasterstatus(jobmasterid).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getjobmaster = function (jobmasterid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getjobmaster(jobmasterid).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.createjobposting = function (jobposting) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.validatejobposting(jobposting.projectid, jobposting.clientid).then(function (result) {
+            if (result.response == 1) {
+                reject("Job postings already exists for this project.");
+            } else {
+                jobDal.createjobposting(jobposting).then(function (result) {
+                    jobDal.updatejobpostingdetail(result.jobpostingid, jobposting.jobs, jobposting.changedby, new Date(jobposting.startdate)).then(function (output) {
+                        resolve(output)
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.updatejobposting = function (jobs, changedby, jobpostingid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getjobpostingbyjobpostingid(jobpostingid).then(function (result) {
+            for (var jobsindex = 0; jobsindex < jobs.length; jobsindex++) {
+                for (var index = 0; index < result.length; index++) {
+                    if (result[index].jobmasterid == jobs[jobsindex].jobmasterid) { 
+                        var jobcnt = (jobs[jobsindex].numberofvacancies ? parseInt(jobs[jobsindex].numberofvacancies) : 0);
+                        var jobscnt = (result[index].numberofvacancies ?  parseInt(result[index].numberofvacancies) : 0);
+                        result[index].numberofvacancies = jobscnt + jobcnt;
+                        break;
+                    }
+                    else if (typeof result[jobsindex] === 'undefined') {
+                        var job = new jobModel.jobs(0, jobs[jobsindex].jobmasterid, jobs[jobsindex].code, jobs[jobsindex].name,  (jobs[jobsindex].numberofvacancies ? parseInt(jobs[jobsindex].numberofvacancies) : 0), 0, 0, "");
+                        result.push(job);
+                        break;
+                    }
+                }
+            }
+            jobDal.updatejobpostingdetail(jobpostingid, result, changedby, new Date(result[0].startdate)).then(function (result) {
+                resolve(result)
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.updatejobpostingstatus = function (jobpostingid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.updatejobpostingstatus(jobpostingid).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getdutiesforauthorize = function (monthandyear) {
+    console.log("BAL-------------------",monthandyear);
+    return new app.promise(function (resolve, reject) {
+        jobDal.getdutiesforauthorize(monthandyear).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getjobposting = function (jobpostingid) {
+    return new app.promise(function (resolve, reject) {
+        //jobDal.getinactivedate().then(function (output) {
+        //    var inactivedate = new Date(output.inactivedate);
+        //    var currentdate = new Date();
+        //    if (currentdate <= inactivedate) {
+        jobDal.getjobposting(jobpostingid).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+            //}
+            //else {
+            //    resolve("success")
+            //}
+        //}).catch(function (err) {
+        //    reject(err);
+        //});
+    });
+};
+
+module.exports.getjobpostingdetail = function (jobpostingdetailid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getjobpostingdetail(jobpostingdetailid).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+/* module.exports.createjobactivity = function (jobactivity, code, inplace, othercat, ipaddress) {
+*/
+
+module.exports.createjobactivity = function (jobactivity, code, inplace, othercat, ipaddress) {
+    return new app.promise(function (resolve, reject) {
+        checkEligibility(jobactivity.memberid, code).then(function (result) {
+            if (result == "success") {
+                jobDal.memberjobactivity(jobactivity, code, inplace, othercat, ipaddress).then(function (output) {
+                    if (output.status == "0") {
+
+                        var username = nconf.get('SMS_CONFIG_USER');
+                        var password = nconf.get('SMS_CONFIG_PASS');
+                        var senderid = nconf.get('SMS_CONFIG_SENDER');
+                        var smstype = nconf.get('SMS_CONFIG_TYPE');
+                        var smsrouter = nconf.get('SMS_CONFIG_ROUTE');
+                        var smscontent = ''; 
+                        jobDal.getjobAppliedStatus(output.jobactivityid).then(function (result1) { 
+                            smscontent = 'You have applied for a job vacancy in TEXCO.Your Registration status is '+result1[0].jobstatus+' - '+result1[0].currentvacancies +' in Project No : '+result1[0].projectno;
+                            // output.username = username;
+                            // output.password = password;
+                            // output.senderid = senderid;
+                            // output.smstype = smstype;
+                            // output.smsrouter = smsrouter;
+                            // output.projectno = result1[0].projectno;
+                            // output.jobstatus = result1[0].jobstatus; result1[0].mobile
+                             var mobile = '7402220724';
+                             resolve(output);
+                            //  output.currentvacancies = result1[0].currentvacancies;   
+                            http.get('http://message.raagaatechnologies.com/api/mt/SendSMS?user='+username+'&password='+password+'&senderid='+senderid+'&channel='+smstype+'&DCS=0&flashsms=0&number=917402220724&text='+smscontent+'&route='+smsrouter, resp => {
+                                 resolve(output);
+                            })
+                        }).catch(function (err) {
+                            reject(err);
+                        });   
+                    }
+                    else if (output.status == "-1") {
+                        reject("Vacnacy already closed. Please check in vacancy");
+                    }
+                    else if (output.status == "-2") {
+                        reject("Already you applied for the job");
+                    }
+                    else if (output.status == "-3") {
+                        reject("You Already applied 1 job for this week");
+                    }
+                    else if (output.status == "-4") {
+                        reject("Vacnacy already taken by someone. Please wait a minute");
+                    }
+                    
+                }).catch(function (err) {
+                    reject(err);
+                });
+            } else {
+                
+            }
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.createjobactivitycode = function (jobactivity, code, inplace, othercat, ipaddress) {
+    return new app.promise(function (resolve, reject) {
+
+        console.log(jobactivity, code, inplace, othercat, ipaddress);
+        checkEligibility(jobactivity.memberid, code).then(function (result) {
+            if (result == "success") { 
+                var inplaceval = (inplace ? inplace : '');
+                var othercatval = (othercat ? othercat : '');
+                var iswaiting=0;
+                var fillvacnacy=0;
+                var noofvacancy=0;
+                var waitvacancy=0;
+                var curentvacnacy=0;
+                var jobstatuscode=0;
+                var registernno=0;  
+                var totalrows =0;
+                var jobcode = code;
+                jobactivity.changedby ="User";
+                var weeklyjobscount = nconf.get('WEEKLYJOBCOUNT');
+                //First - Check the selected job status
+                jobDal.checkjobactivestatus(jobactivity.jobpostingdetailid).then(function (result0) { 
+                    //if received response received as 1 job is closed.
+                    // fillvacnacy = result0.data.filledvacancies;
+                    // noofvacancy = result0.data.numberofvacancies;
+                    // waitvacancy = result0.data.waitingvacancies;
+                    if(result0.status == "1") {
+                        reject("Vacancy already closed. Please check in vacancy");
+                    } 
+                    else if (result0.data.numberofvacancies <= result0.data.waitingvacancies  ){
+
+                        reject("Vacancy already Filled");
+                    }
+                    
+                    else {   
+                        // job is active 
+                        jobDal.checkselectedjobappliedstatus(jobactivity.memberid,jobactivity.jobpostingdetailid).then(function (result1) { 
+                            // if person already applied the same job appliedcounts is 0 execute the next process
+                            if(parseInt(result1.data[0].appliedcounts) == 0) {
+                                jobDal.checkweeklyappliedjobstatus(jobactivity.memberid).then(function (result2) {
+                                    registernno = result2.data[0].registerationno;
+                                    totalrows = result2.data[0].totalappliedcount;
+                                    // checking the applied count for week
+                                    if(parseInt(totalrows) < weeklyjobscount) {
+                                        // if other than sg,dvr,oa default status wait
+                                        if (jobcode != 'SG' && jobcode != 'DVR' && jobcode != 'OA') {  
+                                            iswaiting=1;
+                                            jobDal.jobapplyprocedure(iswaiting,waitvacancy,fillvacnacy,noofvacancy,jobstatuscode,inplaceval, othercatval, ipaddress,registernno,totalrows,jobactivity).then(function (output) {
+                                                var appcount = (output[1][0].appliedcount ? parseInt(output[1][0].appliedcount) : 0);
+                                                var dt = [{"status": output[0][0].status,"jobactivityid": output[1][0].jobactivityid,"appliedcount": appcount,"rejected": output[2][0].rejected}]; 
+                                                var sendsms = nconf.get('SEND_SMS');
+                                                var sendsmslog = nconf.get('ADD_SMS_LOG');
+                                                // console.log("sendsms",sendsms);
+                                                if(sendsms == 1) {
+                                                    SendSMS(output[1][0].jobactivityid).then(function (result) {
+                                                        resolve(dt);
+                                                    }).catch(function (err) {
+                                                        logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+                                                        resolve(dt); 
+                                                    });
+                                                } else if(sendsmslog == 1) { 
+                                                    addSMSLog(output[1][0].jobactivityid).then(function (result) {
+                                                        resolve(dt);
+                                                    }).catch(function (err) {
+                                                        logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+                                                        resolve(dt); 
+                                                    });
+                                                } else {
+                                                    resolve(dt);  
+                                                }
+                                            }).catch(function (err) {
+                                                logger.debug("jobapplyprocedure BAL - Date "+new Date()+" "+err);
+                                                reject(err);
+                                            });
+                                        } else { 
+                                            jobDal.checkclosedprojectstatus(jobactivity.memberid).then(function (closedresult) {
+                                                if(parseInt(closedresult.clcount) >= 1 ) {
+                                                    iswaiting=0;
+                                                    jobDal.checkagreementstatus(jobactivity.clientid).then(function (result4) { 
+                                                        if (result4.data[0].wagetype == 'DGR VALUE') {
+                                                            jobDal.checkmemberexperiencestatus(jobactivity.memberid).then(function (result5) { 
+                                                                iswaiting = result5.iswaiting;
+                                                                jobDal.jobapplyprocedure(iswaiting,waitvacancy,fillvacnacy,noofvacancy,jobstatuscode,inplaceval, othercatval, ipaddress,registernno,totalrows,jobactivity).then(function (output) {
+                                                                    var appcount = (output[1][0].appliedcount ? parseInt(output[1][0].appliedcount) : 0);
+                                                                    var dt = [{"status": output[0][0].status,"jobactivityid": output[1][0].jobactivityid,"appliedcount": appcount,"rejected": output[2][0].rejected}];
+                                                                    var sendsms = nconf.get('SEND_SMS');
+                                                                    var sendsmslog = nconf.get('ADD_SMS_LOG');
+                                                                    // console.log("sendsms",sendsms);
+                                                                    if(sendsms == 1) {
+                                                                        SendSMS(output[1][0].jobactivityid).then(function (result) {
+                                                                            resolve(dt);
+                                                                        }).catch(function (err) {
+                                                                            logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+                                                                            reject(err);
+                                                                        });
+                                                                    }  else if(sendsmslog == 1) { 
+                                                                        addSMSLog(output[1][0].jobactivityid).then(function (result) {
+                                                                            resolve(dt);
+                                                                        }).catch(function (err) {
+                                                                            logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+                                                                            resolve(dt); 
+                                                                        });
+                                                                    }  else {
+                                                                        resolve(dt);  
+                                                                    }
+                                                                }).catch(function (err) {
+                                                                    logger.debug("jobapplyprocedure BAL - Date "+new Date()+" "+err);
+                                                                    reject(err);
+                                                                });
+                                                            }).catch(function (err) {
+                                                                logger.debug("checkmemberexperiencestatus BAL - Date "+new Date()+" "+err);
+                                                                reject(err);
+                                                            });
+                                                        } else { 
+                                                            jobDal.jobapplyprocedure(iswaiting,waitvacancy,fillvacnacy,noofvacancy,jobstatuscode,inplaceval, othercatval, ipaddress,registernno,totalrows,jobactivity).then(function (output) {
+                                                                var appcount = (output[1][0].appliedcount ? parseInt(output[1][0].appliedcount) : 0);
+                                                                var dt = [{"status": output[0][0].status,"jobactivityid": output[1][0].jobactivityid,"appliedcount": appcount,"rejected": output[2][0].rejected}];
+                                                                var sendsms = nconf.get('SEND_SMS');
+                                                                var sendsmslog = nconf.get('ADD_SMS_LOG');
+                                                                // console.log("sendsms",sendsms);
+                                                                if(sendsms == 1) {
+                                                                    SendSMS(output[1][0].jobactivityid).then(function (result) {
+                                                                        resolve(dt);
+                                                                    }).catch(function (err) {
+                                                                        logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+                                                                        reject(err);
+                                                                    });
+                                                                } else if(sendsmslog == 1) { 
+                                                                    addSMSLog(output[1][0].jobactivityid).then(function (result) {
+                                                                        resolve(dt);
+                                                                    }).catch(function (err) {
+                                                                        logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+                                                                        resolve(dt); 
+                                                                    });
+                                                                }  else {
+                                                                    resolve(dt);  
+                                                                }
+                                                            }).catch(function (err) {
+                                                                logger.debug("jobapplyprocedure BAL - Date "+new Date()+" "+err);
+                                                                reject(err);
+                                                            });
+                                                        }
+                                                    }).catch(function (err) {
+                                                        logger.debug("checkagreementstatus BAL - Date "+new Date()+" "+err);
+                                                        reject(err);
+                                                    });
+                                                } else {
+                                                    jobDal.checkoneyearstatus(jobactivity.memberid).then(function (result3) {
+                                                        if(parseInt(result3.data[0].isvalid) >= 1 ) {
+                                                            iswaiting=1;
+                                                            jobDal.jobapplyprocedure(iswaiting,waitvacancy,fillvacnacy,noofvacancy,jobstatuscode,inplaceval, othercatval, ipaddress,registernno,totalrows,jobactivity).then(function (output) {
+                                                                var appcount = (output[1][0].appliedcount ? parseInt(output[1][0].appliedcount) : 0);
+                                                                var dt = [{"status": output[0][0].status,"jobactivityid": output[1][0].jobactivityid,"appliedcount": appcount,"rejected": output[2][0].rejected}];
+                                                                var sendsms = nconf.get('SEND_SMS');
+                                                                var sendsmslog = nconf.get('ADD_SMS_LOG');
+                                                                // console.log("sendsms",sendsms);
+                                                                if(sendsms == 1) {
+                                                                    SendSMS(output[1][0].jobactivityid).then(function (result) {
+                                                                        resolve(dt);
+                                                                    }).catch(function (err) {
+                                                                        logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+                                                                        reject(err);
+                                                                    });
+                                                                } else if(sendsmslog == 1) { 
+                                                                    addSMSLog(output[1][0].jobactivityid).then(function (result) {
+                                                                        resolve(dt);
+                                                                    }).catch(function (err) {
+                                                                        logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+                                                                        resolve(dt); 
+                                                                    });
+                                                                }  else {
+                                                                    resolve(dt);  
+                                                                }
+                                                            }).catch(function (err) {
+                                                                logger.debug("jobapplyprocedure BAL - Date "+new Date()+" "+err);
+                                                                reject(err);
+                                                            });
+                                                        } else {
+                                                            iswaiting=0;
+                                                            jobDal.checkagreementstatus(jobactivity.clientid).then(function (result4) { 
+                                                                if (result4.data[0].wagetype == 'DGR VALUE') {
+                                                                    jobDal.checkmemberexperiencestatus(jobactivity.memberid).then(function (result5) { 
+                                                                        iswaiting = result5.iswaiting;
+                                                                        jobDal.jobapplyprocedure(iswaiting,waitvacancy,fillvacnacy,noofvacancy,jobstatuscode,inplaceval, othercatval, ipaddress,registernno,totalrows,jobactivity).then(function (output) {
+                                                                            var appcount = (output[1][0].appliedcount ? parseInt(output[1][0].appliedcount) : 0);
+                                                                            var dt = [{"status": output[0][0].status,"jobactivityid": output[1][0].jobactivityid,"appliedcount": appcount,"rejected": output[2][0].rejected}];
+                                                                            var sendsms = nconf.get('SEND_SMS');
+                                                                            var sendsmslog = nconf.get('ADD_SMS_LOG');
+                                                                            // console.log("sendsms",sendsms);
+                                                                            if(sendsms == 1) {
+                                                                                SendSMS(output[1][0].jobactivityid).then(function (result) {
+                                                                                    resolve(dt);
+                                                                                }).catch(function (err) {
+                                                                                    logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+                                                                                    reject(err);
+                                                                                });
+                                                                            }  else if(sendsmslog == 1) { 
+                                                                                addSMSLog(output[1][0].jobactivityid).then(function (result) {
+                                                                                    resolve(dt);
+                                                                                }).catch(function (err) {
+                                                                                    logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+                                                                                    resolve(dt); 
+                                                                                });
+                                                                            }  else {
+                                                                                resolve(dt);  
+                                                                            }
+                                                                        }).catch(function (err) {
+                                                                            logger.debug("jobapplyprocedure BAL - Date "+new Date()+" "+err);
+                                                                            reject(err);
+                                                                        });
+                                                                    }).catch(function (err) {
+                                                                        logger.debug("checkmemberexperiencestatus BAL - Date "+new Date()+" "+err);
+                                                                        reject(err);
+                                                                    });
+                                                                } else { 
+                                                                    jobDal.jobapplyprocedure(iswaiting,waitvacancy,fillvacnacy,noofvacancy,jobstatuscode,inplaceval, othercatval, ipaddress,registernno,totalrows,jobactivity).then(function (output) {
+                                                                        var appcount = (output[1][0].appliedcount ? parseInt(output[1][0].appliedcount) : 0);
+                                                                        var dt = [{"status": output[0][0].status,"jobactivityid": output[1][0].jobactivityid,"appliedcount": appcount,"rejected": output[2][0].rejected}];
+                                                                        var sendsms = nconf.get('SEND_SMS');
+                                                                        var sendsmslog = nconf.get('ADD_SMS_LOG');
+                                                                        // console.log("sendsms",sendsms);
+                                                                        if(sendsms == 1) {
+                                                                            SendSMS(output[1][0].jobactivityid).then(function (result) {
+                                                                                resolve(dt);
+                                                                            }).catch(function (err) {
+                                                                                logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+                                                                                reject(err);
+                                                                            });
+                                                                        } else if(sendsmslog == 1) { 
+                                                                            addSMSLog(output[1][0].jobactivityid).then(function (result) {
+                                                                                resolve(dt);
+                                                                            }).catch(function (err) {
+                                                                                logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+                                                                                resolve(dt); 
+                                                                            });
+                                                                        }  else {
+                                                                            resolve(dt);  
+                                                                        }
+                                                                    }).catch(function (err) {
+                                                                        logger.debug("jobapplyprocedure BAL - Date "+new Date()+" "+err);
+                                                                        reject(err);
+                                                                    });
+                                                                }
+                                                            }).catch(function (err) {
+                                                                logger.debug("checkagreementstatus BAL - Date "+new Date()+" "+err);
+                                                                reject(err);
+                                                            });
+                                                        }
+                                                    }).catch(function (err) {
+                                                        reject(err);
+                                                    });
+                                                }
+                                            }).catch(function (err) {
+                                                reject(err);
+                                            });
+                                        }
+                                    } else {
+                                        // if person already one job for the week
+                                        reject("You Already applied maximum number of job for this week");
+                                    }
+                                }).catch(function (err) {
+                                    logger.debug("checkweeklyappliedjobstatus BAL - Date "+new Date()+" "+err);
+                                    reject(err);
+                                });
+                            } else {
+                                // if person already applied the same job then appliedcounts is 1
+                                reject("Already you applied for the job");
+                            }
+                        }).catch(function (err) {
+                               logger.debug("checkselectedjobappliedstatus BAL - Date "+new Date()+" "+err);
+                            reject(err);
+                        });
+                    }
+                }).catch(function (err) {
+                    logger.debug("createjobactivitycode  BAL - Date "+new Date()+" "+err);
+                    reject(err);
+                });
+            } else {
+                
+            }
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+function SendSMS (jobactivityid) { 
+    return new app.promise(function (resolve, reject) {
+        var sendsms = nconf.get('SEND_SMS');
+        var sendsmslog = nconf.get('ADD_SMS_LOG');
+        console.log("sendsmslog",sendsmslog);
+        var smsurl = nconf.get('SMS_URL');
+        var username = nconf.get('SMS_CONFIG_USER');
+        var password = nconf.get('SMS_CONFIG_PASS');
+        var senderid = nconf.get('SMS_CONFIG_SENDER');
+        var smstype = nconf.get('SMS_CONFIG_TYPE');
+        var smsrouter = nconf.get('SMS_CONFIG_ROUTE'); 
+        if(sendsms == 1) {
+            jobDal.getjobAppliedStatus(jobactivityid).then(function (result1) { 
+                smscontent = "You have applied for a job vacancy in TEXCO.Your Registration status is "+result1[0].jobstatus+" - "+result1[0].currentvacancies +" in Project No : "+result1[0].projectno;
+                if(result1[0].mobile) {
+                    var urlss = smsurl+"?user="+username+"&password="+password+"&senderid="+senderid+"&channel="+smstype+"&DCS=0&flashsms=0&number=91"+result1[0].mobile+"&text="+smscontent+"&route="+smsrouter;
+                    if(sendsmslog == 1) 
+                        smslogger.info("SMS Status - Date "+new Date()+" ## Mobile Number - "+result1[0].mobile+" ## SMS Content - "+smscontent);
+                    try {
+                        http.get(urlss, resp => {
+                            resolve("success");
+                        })
+                    } catch(err) {
+                        console.log("err",err);
+                        resolve("success");
+                    }
+                } 
+                else {
+                    resolve("success");
+                }
+            }).catch(function (err) {
+                resolve("success");
+                reject(err);
+            });  
+        } 
+        else {
+            resolve("success");
+        }
+    })
+}
+
+function addSMSLog (jobactivityid) { 
+    return new app.promise(function (resolve, reject) {
+        var sendsmslog = nconf.get('ADD_SMS_LOG');
+        // console.log("sendsmslog",sendsmslog);
+        if(sendsmslog == 1) {
+            jobDal.getjobAppliedStatus(jobactivityid).then(function (result1) { 
+                smscontent = "You have applied for a job vacancy in TEXCO.Your Registration status is "+result1[0].jobstatus+" - "+result1[0].currentvacancies +" in Project No : "+result1[0].projectno;
+                if(result1[0].mobile) 
+                    smslogger.info("SMS Status - Date "+new Date()+" ## Mobile Number - "+result1[0].mobile+" ## SMS Content - "+smscontent);
+                resolve("success");
+            }).catch(function (err) {
+                resolve("success");
+                reject(err);
+            });  
+        } 
+        else {
+            resolve("success");
+        }
+    })
+}
+
+
+function checkEligibility(memberid, code) {
+    return new app.promise(function (resolve, reject) {
+        memberDal.CheckBlockedMembers(memberid).then(function (result1) {
+            console.log('result1',result1);
+            if (result1[0].isrepcoblock == 2) {
+                reject("You have been alredy received/applied Repco settlement. You are not eligible to apply any job");  
+            }
+            else if(result1[0].memcount > 0) {
+                if(result1[0].curdates < 0) {
+                    memberDal.getmemberStatus(memberid).then(function (result) {
+                        var rank = result[0].rank;
+                        var str = "";
+                        console.log('result[0].diff_year',result[0].diff_year);
+                        if(result[0].diff_year <= 61 ) {
+                            if (result[0].dependentstatus == 1) {
+                                if (code == "SG") {
+                                    resolve("success")
+                                }
+                                else {
+                                    reject("You are eligible to apply for SG only")
+                                }
+                            }
+                            else {
+                                if (code == "OTHER" || code == "GUN" || code == "OA") {
+                                    resolve("success")
+                                }
+                                else {
+                                    jobDal.checkjobeligibility(code, rank).then(function (result) {
+                                        if (result > 0) {
+                                            resolve("success");
+                                        } else {
+                                            reject("You are not eligible to apply for this job,Update rank");
+                                        }
+                                    });
+                                }
+                            }
+                        } else {
+                            reject("Your Age is Above 61.You are not eligible to apply job");
+                        }
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }
+                else{
+                    reject("You have been blocked by admin. Kindly contact administrator");
+                }
+            } 
+            else {
+                memberDal.getmemberStatus(memberid).then(function (result) {
+                    var rank = result[0].rank;
+                    var str = "";
+                    if(result[0].diff_year <= 61 ) {
+                        if (result[0].dependentstatus == 1) {
+                            if (code == "SG") {
+                                resolve("success")
+                            }
+                            else {
+                                reject("You are eligible to apply for SG only")
+                            }
+                        }
+                        else {
+                            if (code == "OTHER" || code == "GUN" || code == "OA" || code == "DEO") {
+                                resolve("success")
+                            }
+                            else {
+                                jobDal.checkjobeligibility(code, rank).then(function (result) {
+                                    if (result > 0) {
+                                        resolve("success");
+                                    } else {
+                                        reject("You are not eligible to apply for this job,Update rank");
+                                    }
+                                });
+                            }
+                        }
+                    } else {
+                        reject("Your Age is Above 61.You are not eligible to apply job");
+                    }
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }
+        })
+    })
+};
+
+module.exports.updatejobactivity = function (jobactivityid, jobstatusid, comments) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.updatejobactivity(jobactivityid, jobstatusid, comments).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getjoblist = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getinactivedate().then(function (output) { 
+            console.log('output',output);
+            var currentdate = new Date();
+            var inactivedate = new Date(output[0].opendate); 
+            if (currentdate >= inactivedate) {
+                jobDal.getjoblist().then(function (result) {
+                    resolve(result)
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }
+            else {
+                resolve("success")
+            }
+        });
+    });
+};
+
+module.exports.getalljoblist = function () {
+    return new app.promise(function (resolve, reject) {
+		logger.debug(" Date - "+ new Date() + "  - jobBAL.js before inactivelist joblist.js Call");
+        jobDal.getinactivedate().then(function (output) {
+            logger.debug(" Date - "+ new Date() + "  - jobBAL.js after success inactivelist joblist.js Call");
+            var currentdate = new Date();
+            var opendate = new Date(output[0].opendate);
+            if (currentdate >= opendate) {
+                logger.debug(" Date - "+ new Date() + "  - jobBAL.js currentdate opendate if condition");
+                jobDal.getalljoblist().then(function (result) {
+                    logger.debug(" Date - "+ new Date() + "  - jobBAL.js getalljoblist success condition");
+                    resolve(result)
+                }).catch(function (err) {
+                    logger.debug(" Date - "+ new Date() + "  - jobBAL.js getall joblist query execute error - err "+err);
+                    reject(err);
+                });
+            }
+            else {
+                logger.debug(" Date - "+ new Date() + "  - jobBAL.js after success inactivedate empty joblist.js Call");
+                resolve("success");
+            }
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+
+module.exports.getVacancyViewStatus = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getVacancyViewStatus().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getjobapplied = function (closedate) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getjobapplied(closedate).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getjobappliedformember = function (memberId) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getjobappliedformember(memberId).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getjobappliedforclient = function (clientid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getjobappliedforclient(clientid).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.closejobpostingdetail = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.lastweekvacancy().then(function (list) {
+            if(list.vacancy){
+                jobDal.insertcarryforward(list.vacancy).then(function (result) {
+                    var d = new Date();
+                    var closedate = d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate() + " 00:00:00";
+                    jobDal.closejobpostingdetail(closedate).then(function (result) {
+                        resolve(result)
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }).catch(function (err) {
+                    reject(err);
+                });
+            } else {
+                resolve(list);
+            }
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.exportvacancy = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.exportvacancy().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.importvacancy = function (vacancy) {
+    return new app.promise(function (resolve, reject) {
+        var test = JSON.stringify(vacancy)
+        var job = vacancy[0];
+        var postings = [];
+        var logs = [];
+        var resulttype=0;
+        if (job.length > 0) {
+            jobDal.getjobmaster(0).then(function (jobmaster) {
+                for (var i = 0; i < job.length; i++) {
+                    jobDal.getclientprojectid(job[i]["PROJECTNO"], job[i]).then(function (result) {
+                        jobmaster.forEach(function (value) {
+                            postings.push(new jobModel.jobs(0, value.jobmasterid, value.code, "", (result.job[value.code] != undefined? result.job[value.code]: 0), "", "", result.job[value.code + "COMMENTS"], new Date(), result.job[value.code + "INPLACE"]));
+                        });
+                        jobDal.importvacancy(result, postings).then(function (result) {
+                            if (result) {
+                                jobDal.updateimportdate().then(function (output) {
+                                    resolve(logs);
+                                }).catch(function (err) {
+                                    reject(err);
+                                });
+                            }
+                            else {
+                                reject(err);
+                            }
+                        }).catch(function (err) {
+                            reject(err);
+                        });
+                        postings = [];
+                        vacancy = [];
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }
+                /*if(parseInt(resulttype)==1) {
+                    jobDal.updateimportdate().then(function (output) {
+                        resolve(logs);
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }else{
+                    resolve(logs);
+                }*/
+            }).catch(function (err) {
+                reject(err);
+            });
+        }
+        else {
+            reject("No Records to upload");
+        }
+    });
+};
+
+module.exports.getpostedlist = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getclosedate().then(function (close) {
+            jobDal.getpostedlist(close[0].closedate).then(function (result) {
+                resolve(result)
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+        
+    });
+};
+
+module.exports.getprojectInvoiceList = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getprojectInvoiceList().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+}; 
+
+module.exports.getprojectInvoiceListXML = function (monthandyear) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getprojectInvoiceListXML(monthandyear).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getApprovedInvoicesCount = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getApprovedInvoicesCount().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+}; 
+
+module.exports.getTotalInvoicesCount = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getTotalInvoicesCount().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+
+module.exports.getTotalInvoiceAmount = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getTotalInvoiceAmount().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+}; 
+
+module.exports.getPendingInvoiceAmount = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getPendingInvoiceAmount().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+module.exports.updatejobactivitystatus = function (jobactivityid, memberid, jobcode, confirmdate,isrejected) {
+    return new app.promise(function (resolve, reject) {
+        if (confirmdate != "") {
+            var ondate = new Date(confirmdate);
+        }
+        else {
+            var ondate = new Date();
+        }
+        jobDal.getconfirmedcount(jobactivityid).then(function (res) {
+            var jobpostingdetailid = res.jobpostingdetailid;
+            var projectid = res.projectid;
+            jobDal.getavailablevacancies(jobpostingdetailid).then(function (output) {
+                var confirmed = output.confirmed;
+                var vacancy = output.vacancy;
+                if (parseInt(vacancy) > confirmed) {
+                    jobDal.getmemberalreadyconfirmed(memberid, ondate).then(function (result1) {
+                        if (result1 == 0) {
+                            clientDal.getmemberlastaccess(memberid).then(function (result) {
+                                if (result.texcono == "") {
+                                    //Texco Number generation
+                                    jobactivitystatus(jobactivityid, memberid, projectid, ondate, jobcode,isrejected).then(function (result) {
+                                        resolve(result);
+                                    }).catch(function (err) {
+                                        reject(err);
+                                    });
+                                }
+                                else {
+                                    var diffDays = 0;
+                                    if(result.lastaccdiff) {
+                                        diffDays = result.lastaccdiff;
+                                    } else if(result.dojdiff) {
+                                        diffDays = result.dojdiff;
+                                    }
+                                    if (diffDays > 90) {
+                                       jobactivitystatus(jobactivityid, memberid, projectid, ondate, jobcode,isrejected).then(function (result) {
+                                           resolve(result);
+                                       }).catch(function (err) {
+                                           reject(err);
+                                       });
+                                    }else {
+                                        jobDal.updatejobactivitystatus(jobactivityid, result.texcono, ondate, jobcode).then(function (result) {
+                                            jobDal.getprojectno(projectid).then(function (output1) {
+                                                jobDal.createconfirmhistory(memberid, ondate, texcono, output1.projectno, jobcode,projectid,isrejected,jobactivityid).then(function (output2) {
+                                                    resolve(result)
+                                                }).catch(function (err) {
+                                                    reject(err);
+                                                });
+                                            }).catch(function (err) {
+                                                reject(err);
+                                            });
+                                        }).catch(function (err) {
+                                            reject(err);
+                                        });
+                                    }
+                                }
+                            }).catch(function (err) {
+                                reject(err);
+                            });
+                        }
+                        else {
+                            resolve("failure")
+                        }
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }
+                else {
+                    resolve("vacancy")
+                }
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getjobapplyprint = function (jobactivityid, memberid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getjobapplyprint(jobactivityid, memberid).then(function (result) {
+            console.log('result',result);
+            jobDal.getconfirmhistory(result.memberid, result).then(function (output) {
+                jobDal.getregionammobile(result.applied[0].proregionid).then(function (ams) {
+                    result.history = output.history;
+                    result.experience = output.experience;
+                    result.ammobile = ams.ammobile;
+                   
+                    resolve(result)
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getjobpostingprint = function (jobactivityid, memberid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getjobpostingprint(jobactivityid, memberid).then(function (result) {
+            jobDal.getconfirmhistory(result.memberid, result).then(function (output) {
+                jobDal.getregionammobile(result.applied[0].proregionid).then(function (ams) {
+                    result.history = output.history;
+                    result.experience = output.experience;
+                    result.ammobile = ams.ammobile;
+                    resolve(result)
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getjobpostingprintpost = function (memberhistoryid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getjobpostingprintpost(memberhistoryid).then(function (result) {
+            jobDal.getconfirmhistory(result.memberid, result).then(function (output) {
+                jobDal.getregionammobile(result.applied[0].proregionid).then(function (ams) {
+                    result.history = output.history;
+                    result.experience = output.experience;
+                    result.ammobile = ams.ammobile;
+                    resolve(result)
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getjobpostingdate = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getjobpostingdate().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+module.exports.getrecruitment = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getrecruitment().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getClientCount = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getClientCount().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.TotalInvoiceAmountss = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.TotalInvoiceAmountss().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getclientrecruitment = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getclientrecruitment().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getduties = function (monthandyear) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getduties(monthandyear).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.approveattendance = function (attendance) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.approveattendance(attendance).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.generateinvoice = function (projectid, monthandyear, clientid, status, billstatus) {
+    return new app.promise(function (resolve, reject) {
+        if(billstatus == 1) {
+            resolve({'status':2});
+        } else {
+            generateinvoices(projectid, monthandyear).then(function (rr) {
+                jobDal.autherizedueamount(projectid,monthandyear).then(function (output11) {
+                    jobDal.generatedueamount(output11).then(function (output2) { 
+                        resolve({'status':2});
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }).catch(function (err) {
+                reject(err);
+            });
+        }
+    });
+};
+
+function pad(n, width, z) {
+    return new app.promise(function (resolve, reject) {
+        var value = 0;
+        z = z || '0';
+        n = n + '';
+        value = n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+        resolve(value);
+    })
+}
+
+module.exports.getinvoice = function (invoiceno) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getinvoice(invoiceno).then(function (result) {
+            jobDal.getjobMasterDetails().then(function (results) {
+                result[0].masters = results;
+                jobDal.getdriverforinvoice(result[0].projectid, result[0].monthandyear).then(function (output) {
+                    result[0].drivers = output;
+                    resolve(result)
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.rejectemployer = function (jobactivityid) {
+    console.log("Reject ",jobactivityid);
+    return new app.promise(function (resolve, reject) {
+        var ondate = new Date();
+        jobDal.rejectemployer(jobactivityid, ondate).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getclosedate = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getclosedate().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getjobpostingdetails = function (fromdate,todate) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getjobpostingdetails(fromdate,todate).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getMemberHistory = function (texconumber) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getMemberHistory(texconumber).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+
+
+module.exports.invoicereport = function (cientid, projectid, monthandyear) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.invoicereport(cientid, projectid, monthandyear).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.updateinactivedate = function (inactivedate) {
+    return new app.promise(function (resolve, reject) {
+        var d = new Date(inactivedate);
+        var date = d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate() + " 23:59:59";
+        jobDal.updateinactivedate(date).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getjobappliedreport = function (closedate) {
+    // console.log("entering BAL")
+    return new app.promise(function (resolve, reject) {
+        jobDal.getjobappliedreport(closedate).then(function (result) {
+            var count = result.length;
+            var memberids = [];
+            if (count > 0) {
+                for (var i = 0; i < count; i++) {
+                    memberids.push(result[i].memberid);
+                }
+                // console.log('memberids',JSON.stringify(memberids));
+                jobDal.getconfirmhistoryofmembers(memberids, result).then(function (output) {
+                    // console.log("=====>>>>>>>=======");
+                    for (var k = 0; k < output.result.length; k++) {
+                        for (var j = 0; j < output.history.length; j++) {
+                            if (output.result[k].memberid == output.history[j].memberid) {
+                                output.result[k].history = output.history[j].history;
+                                output.result[k].experiencefinal = output.history[j].experience;
+                                output.result[k].lastoneyear = output.history[j].last6month;
+                                resolve(output.result)
+                            }
+                        }
+                    }
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+function jobactivitystatus(jobactivityid, memberid, projectid, ondate, jobcode,isrejected) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.gettexconos().then(function (gettexno) {
+            var logtexcono = gettexno.texcono;
+            var texconologid = gettexno.texconologid;
+            if (texconologid == 0) {
+                jobDal.getTexcoNo().then(function (texcono) { // new function added for procedure
+                    // console.log('texcono',texcono)
+                    var texcono = parseInt(texcono) + 1;
+                    jobDal.updatejobactivitystatus(jobactivityid, texcono, ondate).then(function (result) {
+                        jobDal.getprojectno(projectid).then(function (output1) {
+                            jobDal.createconfirmhistory(memberid, ondate, texcono, output1.projectno,jobcode,projectid,isrejected,jobactivityid).then(function (output2) {
+                                resolve(result)
+                            }).catch(function (err) {
+                                reject(err);
+                            });
+                        }).catch(function (err) {
+                            reject(err);
+                        });
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }).catch(function (err) {
+                    reject(err);
+                });
+
+                /* settingDal.getsettingbycode("TXSNO").then(function (gennum) {
+                    var lasttexcono = gennum.texcono;
+                    var texcono = parseInt(lasttexcono) + 1;
+                    settingDal.updatesettingvaluebycode(texcono, "TXSNO").then(function (result2) {
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }).catch(function (err) {
+                    reject(err);
+                }); */
+            }
+            else {
+                jobDal.updatetexconolog(texconologid).then(function (result) {
+                    jobDal.updatejobactivitystatus(jobactivityid, logtexcono, ondate).then(function (result) {
+                        jobDal.getprojectno(projectid).then(function (output1) {
+                            jobDal.createconfirmhistory(memberid, ondate, logtexcono, output1.projectno, jobcode,projectid,isrejected,jobactivityid).then(function (output2) {
+                                resolve(result)
+                            }).catch(function (err) {
+                                reject(err);
+                            });
+                        }).catch(function (err) {
+                            reject(err);
+                        });
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }
+            
+        }).catch(function (err) {
+            reject(err);
+        });
+    })
+};
+
+module.exports.getemployeesinjob = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getemployeesinjob().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.employeeresign = function (jobactivityid, reason, resigndate, memberid) {
+    return new app.promise(function (resolve, reject) {
+        resigndate = new Date(resigndate);
+        jobDal.employeeresign(jobactivityid, reason, resigndate, memberid).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getpostedlistreport = function (closedate) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getpostedlistreport(closedate).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.updatejobpostingdetail = function (jobs, changedby, jobpostingid, startdate) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.updatejobpostingdetail(jobpostingid, jobs, changedby, new Date(startdate)).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.updateinplacecategory = function (jobactivityid, inplace, category, changedby, confirmdate, jobpostingdetailid, jobinplace, isrejected) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.updateinplacecategory(jobactivityid, inplace, category, changedby, confirmdate, jobpostingdetailid, jobinplace, isrejected).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.canceljobactivity = function (jobactivityid, memberid,inplace,jobpostingdetailid,effectivedate,texcono) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.checknewtexcono(memberid).then(function (result) {
+            if(result.memcount == 1) {
+                jobDal.canceljobactivitystatus(memberid).then(function (result) {
+                    jobDal.canceljobactivity(jobactivityid, inplace, jobpostingdetailid).then(function (result) {
+                        resolve(result)
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }).catch(function (err) {
+                    reject(err);
+                });
+            } else if (result.memcount > 1) { 
+                jobDal.canceljobactivitybydate(memberid,effectivedate,texcono).then(function (result) {
+                    console.log("result - result",result);
+                    jobDal.canceljobactivity(jobactivityid, inplace, jobpostingdetailid).then(function (results) {
+                        console.log("results - results",results);
+                        resolve(results)
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }).catch(function (err) {
+                    reject(err);
+                });
+            } else {
+                reject("No records found for selected person");
+            }
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.jobchangeproject = function (jobactivityid, canceljobactivityid, texcono, memberid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.canceljobactivity(canceljobactivityid).then(function (result) {
+            var ondate = new Date();
+            jobDal.updatejobactivitystatus(jobactivityid, texcono, ondate).then(function (result) {
+                jobDal.getprojectno(projectid).then(function (output1) {
+                    var projectno = output1.projectno;
+                    jobDal.deletememberhistory(memberid).then(function () {
+                        jobDal.createconfirmhistory(memberid, ondate, texcono, projectno, jobcode,projectid,jobactivityid).then(function (output2) {
+                            resolve(output2)
+                        }).catch(function (err) {
+                            reject(err);
+                        });
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getopeningdate = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getopeningdate().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.updateopeningdate = function (opendate) {
+    return new app.promise(function (resolve, reject) {
+        //var opendate = new Date(opendate);
+        jobDal.updateopeningdate(opendate).then(function (result) {
+            if (result) {
+                jobDal.getopeningdate().then(function (result1) {
+                    resolve(result1)
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.carryforward = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getclosedate().then(function (close) {
+            jobDal.lastweekvacancy().then(function (result) {
+                jobDal.insertcarryforward(result.vacancy).then(function (result) {
+                    resolve(result)
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getcarryforward = function (carryforwardid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getcarryforward(carryforwardid).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+}; 
+
+module.exports.getcarryforwardexport = function (carryforwardid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getcarryforwardexport(carryforwardid).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+module.exports.createcarryforward = function (jobposting) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.validatejobcarryforward(jobposting.projectid, jobposting.clientid).then(function (result) {
+            jobDal.createcarryforward(jobposting).then(function (result) {
+                resolve(result)
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.deletecarryforward = function (projectid) {
+    return new app.promise(function (resolve, reject) {
+        logger.debug(" Date - "+ new Date() + " - Carryforward  BAL file Entry ProjectID - "+projectid);
+        jobDal.deletecarryforward(projectid).then(function (result) {
+            logger.debug(" Date - "+ new Date() + " - Carryforward  BAL file Success "+result);
+            resolve(result)
+        }).catch(function (err) {
+            logger.debug(" Date - "+ new Date() + " - Carryforward  BAL file error -- "+err);
+            reject(err);
+        });
+    });
+};
+
+module.exports.deletecarryforwardall = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.updatecarryforward().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getforwardvacancy = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getforwardvacancy().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.movevacancy = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getforwardvacancy().then(function (result) {
+            jobBal.MoveToVacancy(result).then(function (output) {
+                jobDal.updatecarryforward().then(function (output) {
+                    resolve(output)
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+}; 
+module.exports.MoveToVacancy = function (vacancy) {
+    return new app.promise(function (resolve, reject) { 
+        var job = vacancy[0]; 
+        var jobmasterid = vacancy[1]; 
+        var postings = [];
+        var logs = [];
+        if (job.length > 0) {
+            for (var i = 0; i < job.length; i++) { 
+                jobDal.MoveToVacancy(job[i]).then(function (result) {
+                    if (result) {
+                        resolve(result); 
+                    } else {
+                        reject(err);
+                    }
+                }).catch(function (err) {
+                    reject(err);
+                });
+                postings = [];
+                vacancy = [];
+            } 
+            jobDal.updateimportdate(jobmasterid).then(function (output) {
+                resolve(logs);
+            }).catch(function (err) {
+                reject(err);
+            });
+        }
+        else {
+            reject("No Records to upload");
+        }
+    });
+}; 
+
+
+module.exports.salarygeneration = function (projectid, monthandyear) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.salarygeneration(projectid, monthandyear).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.generatesalary = function (projectid, monthandyear) {
+    return new app.promise(function (resolve, reject) {
+        var payslipno = 0;
+        jobDal.salarygeneration(projectid, monthandyear).then(function (result) {
+            jobDal.getnumberofpayslip('SSNO').then(function (output) {
+                payslipno = output.salaryslipno;
+                jobDal.generatesalary(result, projectid, monthandyear, payslipno).then(function (output) {
+                    jobDal.updateattendancestatuspay(projectid, monthandyear, 3,'').then(function (output1) {
+                        resolve(output)
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getpayslip = function (projectid, monthandyear, payslipno) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getpayslip(projectid, monthandyear, payslipno).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getdutiesforinvoice = function (monthandyear) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getdutiesforinvoice(monthandyear).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+/*
+
+module.exports.authorizeinvoice = function (projectid, monthandyear) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.updateinvoiceauthorize(projectid, monthandyear, 5).then(function (output1) {
+            resolve(output1)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};*/
+
+module.exports.authorizeinvoice = function (projectid, monthandyear) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.updateinvoiceauthorize(projectid, monthandyear, 5).then(function (output1) {  
+            jobDal.autherizedueamount(projectid,monthandyear).then(function (output) {
+                jobDal.generatedueamount(output).then(function (output2) { 
+                    resolve(output2)
+                    }).catch(function (err) {
+                            reject(err);
+                    });           
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getexpayslip = function (salaryslipid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getexpayslip(salaryslipid).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getpayslippreview = function (projectid, monthandyear) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getpayslippreview(projectid, monthandyear).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getinvoicepreview = function (projectid, monthandyear) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getinvoicepreview(projectid, monthandyear).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.rejectinvoice = function (projectid, monthandyear) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.rejectinvoice(projectid, monthandyear, 1).then(function (output1) {
+            resolve(output1)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getdutiesforbankslip = function (monthandyear) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getdutiesforbankslip(monthandyear).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.generatebankslip = function (projectid, monthandyear) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.generatebankslip(projectid, monthandyear, 6).then(function (output1) {
+            resolve(output1)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.exportbankslip = function (monthandyear, projectids) {
+    return new app.promise(function (resolve, reject) {
+        var fs = require("fs");
+        var filename = Math.floor(new Date() / 1000) +"-BANKDOWN.txt";
+        var writeStream = fs.createWriteStream(statementdownload+"/BankSlip/" + filename);
+        settingDal.getsettingvalue('ACNO').then(function (account) {
+            jobDal.getexportslip(monthandyear, projectids).then(function (output1) {
+                writeStream.write(" " + account.value + "INR0000    D      " + output1[0].total + "Salary \n");
+                for (var i = 0; i < output1[0].exportslip.length; i++) {
+ 				if(output1[0].exportslip[i].type ==1)
+                    {
+                        var type = 'Arrear'
+                    }
+                    else{
+                        var type = 'Salary'
+                    }
+                    writeStream.write(" " + output1[0].exportslip[i].accountno + "INR0000    C         " + output1[0].exportslip[i].netpay +  type+ "\n");
+                }
+                writeStream.end();
+                resolve({
+                    "filepath": writeStream.path,
+                    "filename": filename
+                })
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.autherizedueamount = function (projectid,monthandyear) {
+    console.log(" Entering BAL", projectid+" ---"+monthandyear);
+    return new app.promise(function (resolve, reject) {
+        jobDal.autherizedueamount(projectid,monthandyear).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getdueamount = function (clientid,projectid,monthandyear,invoiceno) {
+    console.log(" Entering BAL", projectid+" ---"+monthandyear);
+    return new app.promise(function (resolve, reject) {
+        jobDal.getdueamount(clientid,projectid,monthandyear,invoiceno).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+
+module.exports.paydueamount = function (clientid,projectid,monthandyear,invoiceno,amount,changedby) {
+    console.log(" Entering BAL", projectid+" ---"+monthandyear);
+    return new app.promise(function (resolve, reject) {
+        jobDal.getdueamount(clientid,projectid,monthandyear,invoiceno).then(function (result1) {
+               console.log(result1);
+               console.log("10",result1[0].dueid);
+               console.log("11",result1[0].clientid);
+               console.log("12",result1[0].projectid); 
+               console.log("13",result1[0].monthandyear); 
+               console.log("14",result1[0].invoiceid); 
+               console.log("15",result1[0].invoiceno); 
+               console.log("16",result1[0].dueopening); 
+               console.log("17",result1[0].duepending);   
+            //jobDAL.changeduestatus()       
+                if(result1[0].duepending>=amount){           
+                     jobDal.paydueamount(clientid,projectid,monthandyear,result1[0].invoiceid,invoiceno,result1[0].dueopening,amount,result1[0].duepending,changedby).then(function (result) {    
+                          jobDal.updatedueamount(result1[0].dueid,changedby).then(function (resul2) { 
+                                resolve(result)
+                            }).catch(function (err) {
+                            reject(err);
+                            }); 
+                            //resolve(result)
+                        }).catch(function (err) {
+                        reject(err);
+                        });  
+                } else{
+                    resolve("We never accept advance")
+                }
+                //resolve(result1)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.updatedueamount = function (dueid,changedby) {
+    console.log(" Entering BAL");
+    return new app.promise(function (resolve, reject) {
+        jobDal.updatedueamount(dueid,changedby).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+
+module.exports.exportxmltally = function (invoiceid,invoiceno,monthandyear,clientid,projectid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.exportxmltally(invoiceid,invoiceno,monthandyear,clientid,projectid).then(function (output1) {
+            resolve(output1)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+module.exports.exportxmltallyAll = function (monthandyear) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.exportxmltallyAll(monthandyear).then(function (output1) {
+            resolve(output1)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getCompanyName = function (texcokeyword) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getCompanyName(texcokeyword).then(function (output1) {
+            resolve(output1)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+module.exports.importdueamount = function (dues) {
+    return new app.promise(function (resolve, reject) {
+        var dueamount = [];
+        console.log('dues[i]',dues[0]);
+        if (dues[0].length > 0) {
+            for (var i = 0; i < dues[0].length; i++) {
+                dueamount.push(new jobModel.OverDue(dues[0][i]['CURDATE'],dues[0][i]['REFNO'],dues[0][i]['PARTYNAME'],dues[0][i]['OPENINGAMOUNT'],dues[0][i]['PENDINGAMOUNT'],dues[0][i]['DUEON'],dues[0][i]['OVERDUEBYDAYS']));
+            }
+            jobDal.importdueamount(dueamount).then(function (result) {
+                resolve(result);
+            }).catch(function (err) {
+                reject(err);
+            });
+        }
+        else {
+            reject("No Records to upload");
+        }
+    });
+};
+module.exports.getAuthorizeList = function (fromdate,todate,regionid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getAuthorizeList(fromdate,todate,regionid).then(function (result) {
+            resolve(result);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.AttendanceAuthorizeSupervisor = function (projectid,clientid,monthandyear,status,billstatus,approvaltype,payslipnos,reason) {
+    var payslipno = 0;
+    // console.log('approvaltype',approvaltype);
+    // console.log('status',status);
+    return new app.promise(function (resolve, reject) {
+        if(approvaltype == 1 && billstatus == 1) {
+            jobDal.updateclaimStatus(projectid,clientid,monthandyear,3,payslipnos).then(function (output1) {
+                resolve({'status':2});
+            }).catch(function (err) {
+                reject(err);
+            });
+        } else if (approvaltype == 1 && status == 2) {
+            jobDal.salarygeneration(projectid,clientid,monthandyear).then(function (result) {
+                jobDal.getnumberofpayslip('SSNO').then(function (output) {
+                    payslipno = output.salaryslipno;
+                    jobDal.getinvoiceexist(projectid, monthandyear).then(function (result2) {
+                        jobDal.generatesalary(result, projectid, monthandyear, payslipno).then(function (output) {
+                            jobDal.CheckAgreementType(projectid,clientid).then(function (output2) {
+                                if(output2[0].agtype == 'SINGLE') {
+                                    generateinvoices(projectid, monthandyear).then(function (rr) {
+                                        //console.log('rr',rr);
+                                        jobDal.autherizedueamount(projectid,monthandyear).then(function (output11) {
+                                            jobDal.generatedueamount(output11).then(function (output2) { 
+                                                payslipno = parseInt(payslipno) + 1;
+                                               // console.log('fdgvdg');
+                                                jobDal.updateattendancestatuspay(projectid, monthandyear, 3,'').then(function (output1) {
+                                                    jobDal.updatepayslipno(payslipno,'SSNO').then(function (output1) {  
+                                                        resolve({'status':2});
+                                                    }).catch(function (err) {
+                                                        reject(err);
+                                                    });
+                                                }).catch(function (err) {
+                                                    reject(err);
+                                                });
+                                            }).catch(function (err) {
+                                                reject(err);
+                                            });
+                                        }).catch(function (err) {
+                                            reject(err);
+                                        });
+                                    }).catch(function (err) {
+                                        reject(err);
+                                    });
+                                } else {
+                                    jobDal.updateSalaryStatus(payslipno, 2).then(function (output4) {
+                                        payslipno = parseInt(payslipno) + 1;
+                                        jobDal.updateattendancestatuspay(projectid, monthandyear, 2,'').then(function (output1) {
+                                            jobDal.updatepayslipno(payslipno,'SSNO').then(function (output1) {  
+                                                resolve({'status':4});
+                                            }).catch(function (err) {
+                                                reject(err);
+                                            });
+                                        }).catch(function (err) {
+                                            reject(err);
+                                        });
+                                    }).catch(function (err) {
+                                        reject(err);
+                                    });
+                                }
+                            }).catch(function (err) {
+                                reject(err);
+                            });
+                        }).catch(function (err) {
+                            reject(err);
+                        });
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }).catch(function (err) {
+                console.log('err',err);
+                reject(err);
+            });
+        } else if (approvaltype == 1 && status == 0) {    
+            jobDal.updateattendancestatuspay(projectid, monthandyear, 7,reason).then(function (output1) {
+                resolve({'status':0});
+            }).catch(function (err) {
+                reject(err);
+            }); 
+        } else if (approvaltype == 2 && status == 2) {  
+            jobDal.salarygeneration(projectid,clientid,monthandyear).then(function (result) {
+                jobDal.getnumberofpayslip('SSNO').then(function (output) {
+                    payslipno = output.salaryslipno;
+                    jobDal.generatesalary(result, projectid, monthandyear, payslipno).then(function (output) {
+                        if(output) {
+                            jobDal.updateSalaryStatus(payslipno, 2).then(function (output4) {
+                                payslipno = parseInt(payslipno) + 1;
+                                jobDal.updatepayslipno(payslipno,'SSNO').then(function (output2) {
+                                    jobDal.getinvoiceexistss(projectid, monthandyear).then(function (result2) {
+                                        var status = 2;
+                                        if(parseInt(result2) > 0) {
+                                            status = 3;
+                                        } 
+                                        jobDal.updateattendancestatuspay(projectid, monthandyear, status,'').then(function (output1) {
+                                            resolve({'status':4});
+                                        }).catch(function (err) {
+                                            reject(err);
+                                        });
+                                    }).catch(function (err) {
+                                        reject(err);
+                                    });
+                                }).catch(function (err) {
+                                    reject(err);
+                                });
+                            }).catch(function (err) {
+                                reject(err);
+                            });
+                        }
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }).catch(function (err) {
+                console.log('err',err);
+                reject(err);
+            });
+        } else if (approvaltype == 2 && status == 0) {
+            jobDal.updateattendancestatuspay(projectid, monthandyear, 7,reason).then(function (output1) {
+                resolve({'status':0});
+            }).catch(function (err) {
+                reject(err);
+            });
+        } else if (approvaltype == 3 && (status == 3 || status == 8)) {  
+            jobDal.salarygeneration(projectid,clientid,monthandyear).then(function (result) {
+                jobDal.getnumberofpayslip('SSNO').then(function (output) {
+                    payslipno = output.salaryslipno;
+                    jobDal.generatesalary(result, projectid, monthandyear, payslipno).then(function (output) {
+                        if(output) {
+                            jobDal.updateSalaryStatus(payslipno, 3).then(function (output4) {
+                                payslipno = parseInt(payslipno) + 1;
+                                jobDal.updatepayslipno(payslipno,'SSNO').then(function (output2) {
+                                    jobDal.updateattendancestatuspay(projectid, monthandyear, 3,'').then(function (output1) {
+                                        resolve({'status':4});
+                                    }).catch(function (err) {
+                                        reject(err);
+                                    });
+                                }).catch(function (err) {
+                                    reject(err);
+                                });
+                            }).catch(function (err) {
+                                reject(err);
+                            });
+                        }
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }).catch(function (err) {
+                console.log('err',err);
+                reject(err);
+            });
+        }else {
+            jobDal.updateattendancestatuspay(projectid, monthandyear, 0,'').then(function (output1) {
+                resolve({'status':0});
+            }).catch(function (err) {
+                reject(err);
+            });
+        }
+    });
+};
+
+module.exports.AttendanceEDAuthorizeSupervisor = function (projectid,clientid,monthandyear,status,billstatus,approvaltype) {
+    var payslipno = 0;
+    return new app.promise(function (resolve, reject) {
+
+    });
+}
+
+module.exports.getAuthorizedPaySlipList = function (fromdate,todate,regionid) {
+    // console.log(fromdate,todate,regionid);
+    return new app.promise(function (resolve, reject) {
+        jobDal.getAuthorizedPaySlipList(fromdate,todate,regionid).then(function (output1) {
+            resolve(output1);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.CashierAuthorizeApproval = function (projectdata,passorderno,status,rejectreason) {
+    // console.log('projectdata',projectdata);
+    return new app.promise(function (resolve, reject) {
+        if(status == 4) {
+            jobDal.ValidatePassOrderNumber(passorderno).then(function (output) {
+                if(output == 0) {
+                    jobDal.CashierAuthorizeApproval(projectdata,passorderno).then(function (output1) {
+                        resolve({'status':4});
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                } else {
+                    reject('Passorder Number already exists');
+                }
+            }).catch(function (err) {
+                reject(err);
+            });
+        } else {
+            jobDal.RejectionProcess(projectdata,status,rejectreason).then(function (output1) {
+                resolve({'status':0});
+            }).catch(function (err) {
+                reject(err);
+            });
+        }
+    });
+};
+
+module.exports.SupervoiserReject = function (projectdata,status,rejectreason) {
+     console.log('projectdata',projectdata);
+    return new app.promise(function (resolve, reject) {
+      
+            jobDal.RejectionProcesssupervisor(projectdata,status,rejectreason).then(function (output1) {
+                resolve({'status':0});
+            }).catch(function (err) {
+                reject(err);
+            });
+        
+    });
+};
+
+module.exports.getPassOrderNumber = function () {
+   // console.log(fromdate,todate,regionid);
+    return new app.promise(function (resolve, reject) {
+        jobDal.getPassOrderNumber().then(function (output1) {
+            resolve(output1);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getPassOrderNumberForList = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getPassOrderNumberForList().then(function (output1) {
+            resolve(output1);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+}; 
+
+module.exports.getPassOrderNumberForListByDate = function (fromdate,todate) {
+     return new app.promise(function (resolve, reject) {
+         jobDal.getPassOrderNumberForListByDate(fromdate,todate).then(function (output1) {
+             resolve(output1);
+         }).catch(function (err) {
+             reject(err);
+         });
+     });
+ };
+
+module.exports.getPassOrderNoProjectDetailsByID = function (passordernumber) {
+    // console.log(fromdate,todate,regionid);
+     return new app.promise(function (resolve, reject) {
+         jobDal.getPassOrderNoProjectDetailsByID(passordernumber).then(function (output1) {
+             resolve(output1);
+         }).catch(function (err) {
+             reject(err);
+         });
+     });
+};
+
+module.exports.getDownloadPayslipByID = function (passordernumber) {
+    // console.log(fromdate,todate,regionid);
+     return new app.promise(function (resolve, reject) {
+         jobDal.getDownloadPayslipByID(passordernumber).then(function (output1) {
+          //  console.log('output1',output1);
+            exportbankslip(output1).then(function (output2) {
+                // console.log('output2',output2);
+                resolve(output2);
+            }).catch(function (err) {
+                reject(err);
+            });
+         }).catch(function (err) {
+             reject(err);
+         });
+     });
+};
+
+module.exports.CAOApproval = function (projectdata,status,rejectreason) {
+    // console.log(status);
+    // console.log('projectdata',projectdata);
+    return new app.promise(function (resolve, reject) {
+        if(status == 6) {
+            jobDal.CAOLevelApproval(projectdata,status).then(function (output1) {
+                // console.log('output1',output1);
+                resolve({'status':4});
+            }).catch(function (err) {
+                reject(err);
+            });
+        } else {
+            jobDal.RejectionProcessCAO(projectdata,status,rejectreason).then(function (output1) {
+                resolve({'status':0});
+            }).catch(function (err) {
+                reject(err);
+            });
+        }
+    });
+};
+module.exports.getSalarySlipNoDetails = function (fromdate,todate,regionid,projectid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getSalarySlipNoDetails(fromdate,todate,regionid,projectid).then(function (output1) {
+            console.log('output1',output1);
+            resolve(output1);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+module.exports.getWageCategoryDetails = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getWageCategoryDetails().then(function (output1) {
+            console.log('output1',output1);
+            resolve(output1);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+}; 
+
+module.exports.getWageCategoryDetailsByID = function (projectid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getWageCategoryDetailsByID(projectid).then(function (output1) {
+            console.log('output1',output1);
+            resolve(output1);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.createArrearSalarySlip = function (salaryslipno,wagecategoryid,wageyearid) {
+     //console.log('salaryslipno',salaryslipno);
+    return new app.promise(function (resolve, reject) {
+        jobDal.salaryarreargeneration(salaryslipno,wagecategoryid,wageyearid).then(function (result) {
+            jobDal.getnumberofpayslip('SSNO').then(function (output) {``
+                payslipno = output.salaryslipno;
+                var promises = [];
+               // console.log('result[i]',JSON.stringify(result));
+                for (var i = 0; i < result.length; i++) {
+                    promises.push(new Promise((resolve, reject) => {
+                        var ino = (i + 1) + '';
+                        var value = ino.length >= 3 ? ino : new Array(3 - ino.length + 1).join('0') + ino;
+                        var individualpayslipno = payslipno + '-' + value;
+                        //console.log('result[i]',result[i]);
+                        jobDal.generateArrearSalary(result[i],payslipno,individualpayslipno).then(function (output) {
+                            resolve(output);
+                        }).catch(function (err) {
+                            reject(err);
+                        });
+                    }));
+                }
+                app.promise.all(promises).then(function () {
+                    payslipno = parseInt(payslipno) + 1;
+                    jobDal.updatepayslipno(payslipno,'SSNO').then(function (output2) {
+                        jobDal.updateSalarySlipStatus(salaryslipno).then(function (output3) {
+                            resolve({'status':1});
+                        }).catch(function (err) {
+                            reject(err);
+                        });
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                });
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+module.exports.getInvoiceNoDetails = function (fromdate,todate,regionid,projectid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getInvoiceNoDetails(fromdate,todate,regionid,projectid).then(function (output1) {
+           // console.log('output1',output1);
+            resolve(output1);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+module.exports.createArrearClaimBill = function (invoiceno,wagecategoryid,wageyearid) {
+    return new app.promise(function (resolve, reject) {
+        var promises = [];
+        var results = [];
+        var diffresults = [];
+        jobDal.getnumberofpayslip('INVNO').then(function (output) {
+            var invoicenos = output.salaryslipno;
+            for (var i = 0; i < invoiceno.length; i++) { 
+                promises.push(new Promise((resolve, reject) => {
+                    var res  = i;
+                    jobDal.claimarreargeneration(invoiceno[res],wagecategoryid,wageyearid).then(function (result) {
+                        results.push(result);
+                       // diffresults.push(result[0].diff);
+                        resolve(results);
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }))
+            }
+            app.promise.all(promises).then(function () {
+                var rowsReturned = results.length;
+                var diffduties = [];
+                var projectids = [];
+                var dutiesdetails = [];
+                var servicecharges = 0;
+                var servicetax = 0;
+                var subtotal = 0;
+                var totalamount = 0;
+               console.log('resultsxx',results);
+                for(var i = 0; i < results.length; i++) {
+
+                    var rowsreturned1=results[i].length
+                    for(var j = 0; j < results[i].length; j++) {
+                  console.log('results',results[i][j].totalduties);
+                    dutiesdetails.push(results[i][j].totalduties[0]);
+                    servicecharges += results[i][j].servicecharges;
+                    servicetax += results[i][j].servicetax;
+                    subtotal += results[i][j].subtotal;
+                    totalamount += results[i][j].total;
+                    projectids.push(results[i][j].projectid);
+                    if ((j + 1) == rowsreturned1) {
+                        var query = {
+                            projectid: results[i][0].projectid,
+                            clientid: results[i][0].clientid,
+                            servicecharge: results[i][0].servicecharge,
+                            tax: results[i][0].tax,
+                            servicecharges: servicecharges,
+                            servicetax: servicetax,
+                            invoiceno: invoicenos,
+                            subtotal: subtotal,
+                            monthandyear: results[i][0].monthandyear,
+                            totalamount: totalamount,
+                            fkinvoiceid: results[i][0].invoiceid,
+                            type: 1,
+                            invoicestatus: 1,
+                            edseperate: results[i][0].edseperate
+                        };
+                        var invid = results[i][0].invoiceid;
+                        //var res1 = j;
+                        jobDal.invoiceCombine(query).then(function (result1) {
+                            // console.log('result1.insertId',result1.invoiceid);
+                            jobDal.claiminvoicedetails(dutiesdetails,'',result1.invoiceid,'').then(function (result1) {
+                                console.log('dfg',result1)
+                                invoicenos = parseInt(invoicenos) + parseInt(1);
+                                jobDal.updatepayslipno(invoicenos,'INVNO').then(function (output1) {
+                                    jobDal.updateClaimStatus(invid).then(function (output3) {
+                                        resolve(output1);
+                                    }).catch(function (err) {
+
+                                        reject(err);
+                                    });
+                                }).catch(function (err) {
+                                    reject(err);
+                                });
+                            }).catch(function (err) {
+                                reject(err);
+                            });
+                        }).catch(function (err) {
+                            reject(err);
+                        });
+                    }
+                }
+           }
+                // for(var i = 0; i < diffresults.length; i++) {
+                //     diffduties.push(diffresults[i][0].totalduties);
+                //     servicecharges += diffresults[i][0].servicecharges;
+                //     servicetax += diffresults[i][0].servicetax;
+                //     subtotal += diffresults[i][0].subtotal;
+                //     totalamount += diffresults[i][0].total;
+                //     projectids.push(diffresults[i][0].projectid);
+                //     if ((i + 1) == rowsReturned) {
+                //         var query1 = {
+                //             projectid: diffresults[i][0].projectid,
+                //             clientid: diffresults[i][0].clientid,
+                //             servicecharge: diffresults[i][0].servicecharge,
+                //             tax: diffresults[i][0].tax,
+                //             servicecharges: servicecharges,
+                //             servicetax: servicetax,
+                //             invoiceno: invoiceno,
+                //             subtotal: subtotal,
+                //             monthandyear: diffresults[i][0].monthandyear,
+                //             totalamount: totalamount,
+                //             invoicestatus: 1
+                //         };
+                //         var res = i;
+                //         jobDal.invoiceCombinediff(query1).then(function (result1) {
+                //             jobDal.claiminvoicedetails('',diffduties[0],'',result1.insertId).then(function (result11) {
+                //                 resolve(result1);
+                //             }).catch(function (err) {
+                //                 reject(err);
+                //             });
+                //         }).catch(function (err) {
+                //             reject(err);
+                //         });
+                //     }
+                // }
+                resolve(results); 
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+module.exports.getpayslipprint = function (monthandyear,regionid,type) {
+    return new app.promise(function (resolve, reject) {
+        if(type == 0) {
+            jobDal.getpayslipprint(monthandyear,regionid).then(function (output1) {
+                resolve(output1);
+            }).catch(function (err) {
+                reject(err);
+            });
+        } else if (type == 1) {
+            jobDal.getpayslipprintSalary(monthandyear,regionid).then(function (output1) {
+                resolve(output1);
+            }).catch(function (err) {
+                reject(err);
+            });
+        } else if (type == 2) {
+            jobDal.getpayslipprintArrear(monthandyear,regionid).then(function (output1) {
+                resolve(output1);
+            }).catch(function (err) {
+                reject(err);
+            });
+        }
+    });
+};
+module.exports.UpdatePrintCount = function (salaryslipno,type) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.UpdatePrintCount(salaryslipno,type).then(function (output1) {
+            resolve(output1);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+}; 
+module.exports.UpdatePrintCounts = function (invoiceid,type) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.UpdatePrintCounts(invoiceid,type).then(function (output1) {
+            resolve(output1);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+module.exports.getinvoiceprint = function (monthandyear,regionid,type) {
+    return new app.promise(function (resolve, reject) {
+        if(type == 0) {
+            jobDal.getinvoiceprint(monthandyear,regionid).then(function (output1) {
+                resolve(output1);
+            }).catch(function (err) {
+                reject(err);
+            });
+        } else if (type == 1) {
+            jobDal.getinvoiceprintSalary(monthandyear,regionid).then(function (output1) {
+                resolve(output1);
+            }).catch(function (err) {
+                reject(err);
+            });
+        } else if (type == 2) {
+            jobDal.getinvoiceprintArrear(monthandyear,regionid).then(function (output1) {
+                resolve(output1);
+            }).catch(function (err) {
+                reject(err);
+            });
+        }
+    });
+}; 
+
+module.exports.getCombinedClaimsProjects = function (fromdate, todate, regionid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getCombinedClaimsProjects(fromdate, todate, regionid).then(function (output1) {
+            resolve(output1);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.updatePostingOrder = function (projectid, projectno, texcono, category, memberhistoryid, startdate, memberid) {  
+    return new app.promise(function (resolve, reject) {
+        jobDal.updatePostingOrder(projectid, projectno, texcono, category, memberhistoryid, startdate, memberid).then(function (output1) {
+            resolve(output1);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+}; 
+ 
+module.exports.updateMemberhistory = function (projectid, projectno, texcono, category, memberhistoryid, startdate, endate) {  
+    return new app.promise(function (resolve, reject) {
+        jobDal.updateMemberhistory(projectid, projectno, texcono, category, memberhistoryid, startdate, endate).then(function (output1) {
+            resolve(output1);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+module.exports.addPostingOrder = function (projectid, projectno, texcono, category, startdate, enddate, serviceno) {  
+    return new app.promise(function (resolve, reject) {
+        jobDal.checkMemberDetails(texcono, serviceno).then(function (output1) {  
+            if(output1.length  > 0) { 
+                jobDal.addPostingOrder(projectid, projectno,texcono, category, startdate,enddate, output1[0].memberid).then(function (output1) {
+                    resolve(output1);
+                }).catch(function (err) {
+                    reject(err);
+                });
+            } else {
+                reject('This Service Number not exists');
+            }
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};   
+
+module.exports.addbulkPostingOrder = function (podata) {  
+    var rejectedDetails = [];  
+    var selectedDetails  = []; 
+    var rejjs = '';
+    var promises = []; 
+    var rejects = [];
+    return new app.promise(function (resolve, reject) { 
+        for(var i = 0; i < podata.length;i++) {  
+            promises.push(new Promise((resolve, reject) => {
+                var res  = i;   
+                if((podata[res].texcono) && (podata[res].serviceno) &&  (podata[res].projectno) && (podata[res].category) && (podata[res].startdate)) {
+                    jobDal.checkMemberDetail(podata[res].texcono,podata[res].serviceno,podata[res].projectno).then(function (output1) {   
+                        if(output1[0].length  > 0 && output1[1].length > 0) { 
+                            podata[res].memberid = output1[0][0].memberid;
+                            podata[res].projectid = output1[1][0].projectid;
+                            selectedDetails.push(podata[res]);
+                        } else {  
+                            if(output1[0].length == 0) { 
+                                var rejj = 'Row ' + (podata[res].sno) + ' - ServiceNo is Mismatch ( '+podata[res].serviceno+ ' )';
+                                if(rejectedDetails.length == 0) { 
+                                    rejjs += 'Row ' + (podata[res].sno) + ' - ServiceNo is Mismatch ( '+podata[res].serviceno+ ' )';
+                                } else {
+                                    rejjs += ', Row ' + (podata[res].sno) + ' - ServiceNo is Mismatch ( '+podata[res].serviceno+ ' )';
+                                }
+                                rejectedDetails.push(rejj);
+                            }  
+                            if(output1[1].length == 0) { 
+                                var rejj = 'Row ' + (podata[res].sno) + ' - ProjectNo is Mismatch ( '+podata[res].projectno+ ' )';
+                                if(rejectedDetails.length == 0) {
+                                    rejjs += 'Row ' + (podata[res].sno) + ' - ProjectNo is Mismatch ( '+podata[res].projectno+ ' )';
+                                } else {
+                                    rejjs += ', Row ' + (podata[res].sno) + ' - ProjectNo is Mismatch ( '+podata[res].projectno+ ' )';
+                                }
+                                rejectedDetails.push(rejj);
+                            }      
+                        }
+                        resolve(podata[res]);
+                    }).catch(function (err) { 
+                        reject(err);
+                    }); 
+                } else {  
+                    //console.log(podata[res]) 
+                    var rejj = 'Row ' + (podata[res].sno) + ' - Some Data Missing.Please fill All Columns'; 
+                    rejectedDetails.push(rejj);
+                    rejects.push(1);
+                    resolve(rejects); 
+                }
+            }))
+        } 
+        app.promise.all(promises).then(function () {    
+            // console.log('rejectedDetailsFinal',rejectedDetails.length, rejjs);
+            if(rejectedDetails.length == 0 && rejects.length == 0) { 
+                jobDal.addBulkPostingOrder(selectedDetails).then(function (output1) { 
+                    var errs = [];
+                    errs.push(rejectedDetails);
+                    rejjs = 'success';
+                    errs.push(rejjs);
+                    resolve(errs);
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }   else { 
+                var errs = [];
+                errs.push(rejectedDetails);
+                errs.push(rejjs);
+                resolve(errs);
+            }
+        });
+    });
+};  
+
+module.exports.transferPostingOrder = function (querydata,endates,memberhistoryid) {
+    // console.log('prodata',prodata);
+    return new app.promise(function (resolve, reject) {
+        jobDal.transferPostingOrder(querydata,endates,memberhistoryid).then(function (output1) {
+            resolve(output1);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.createCombinedClaims = function (projectids) {
+    return new app.promise(function (resolve, reject) {
+        var promises = [];
+        var results = [];
+        jobDal.getnumberofpayslip('INVNO').then(function (output) {
+            var invoiceno = output.salaryslipno;
+           // console.log('projectids',projectids);
+            for (var j = 0; j < projectids.length; j++) {  
+                promises.push(new Promise((resolve, reject) => {
+                    jobDal.generateinvoiceDetails(projectids[j].projectid, projectids[j].monthandyear).then(function (result) {
+                        results.push(result);
+                        resolve(results);
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }))
+            }   
+            
+            app.promise.all(promises).then(function () {
+                var rowsReturned = results.length;
+                var dutiesdetails = [];
+                var projectids = [];
+                var servicecharges = 0;
+                var servicetax = 0;
+                var subtotal = 0;
+                var totalamount = 0; 
+                var totalqq=0;
+                var projid='';
+                var agtypes = _.filter(results, function(item) {
+                    //if(item.ismainproject == rows[res].projectid  ) {
+                        console.log(item[0].ismainproject) ;
+                        //rows[res].agtype=item.agtype;
+                        if(item[0].ismainproject)
+                        {
+                            projid=item[0].projectid;
+                            cliid=item[0].clientid;
+                            servicecha=item[0].servicecharge;
+                            taxc=item[0].tax;
+                        }
+                        
+                    //} 
+                });
+               
+                for(var i = 0; i < results.length; i++) { 
+                    
+                    dutiesdetails.push(results[i][0].totalduties);
+                    servicecharges += parseFloat(results[i][0].servicecharges);
+                    servicetax += parseFloat(results[i][0].servicetax);
+                    subtotal += parseFloat(results[i][0].subtotal);
+                   // totalqq+=parseFloat(results[i][0].total);
+                    totalamount +=(parseFloat(results[i][0].total));
+                    projectids.push(results[i][0].projectid);
+
+                   
+
+                    if ((i + 1) == rowsReturned) {
+                      //  console.log(projectid);
+                            if(projid==undefined || projid=='')
+                            {
+                                projid=results[i][0].projectid;
+                                cliid=results[i][0].clientid;
+                                servicecha=results[i][0].servicecharge;
+                                taxc=results[i][0].tax;
+
+                            }
+                        var query = {
+                            projectid: projid,
+                            clientid: cliid,
+                            servicecharge: servicecha,
+                            tax: taxc,
+                            servicecharges: servicecharges,
+                            servicetax: servicetax,
+                            invoiceno: invoiceno,
+                            subtotal: subtotal,
+                            monthandyear: results[i][0].monthandyear,
+                            totalamount:  Math.round(totalamount),
+                            invoicestatus: 3,
+                            invoicetype : 1,
+                            edseperate:results[i][0].edseperate,
+                            allowancetype1 : results[i][0].allowancetype1,
+                            allowancevalue1 : results[i][0].allowancevalue1,
+                            allowancetype2 : results[i][0].allowancetype2,
+                            allowancevalue2 : results[i][0].allowancevalue2,
+                            allowancetype3 : results[i][0].allowancetype3,
+                            allowancevalue3 : results[i][0].allowancevalue3
+                            
+                        };
+                        var res = i;
+
+                       // console.log('sdfsd',totalqq,totalamount)
+                       // console.log('results....query',query);
+                        jobDal.invoiceCombine(query).then(function (result1) {
+                            //console.log('dutiesdetails',dutiesdetails[0]);
+                            jobDal.invoiceCombinedetails(dutiesdetails, result1.invoiceid).then(function (result2) {
+                                // console.log('projectids----result2',results[res][0].monthandyear);
+                                jobDal.updateattendancestatusinvoice(projectids, results[res][0].monthandyear,3).then(function (output) {
+                                    jobDal.autherizedueamount(projectids,results[res][0].monthandyear).then(function (output11) {
+                                        jobDal.generatedueamount(output11).then(function (output2) { 
+                                            payslipno = parseInt(payslipno) + 1;
+                                            jobDal.updatepayslipno(payslipno,'INVNO').then(function (output1) {
+                                                resolve({'status':2});
+                                            }).catch(function (err) {
+                                                reject(err);
+                                            });
+                                        }).catch(function (err) {
+                                            reject(err);
+                                        });
+                                    }).catch(function (err) {
+                                        reject(err);
+                                    });
+                                    jobDal.updatepayslipno((parseInt(invoiceno) + parseInt(1)),'INVNO').then(function (output1) {
+                                        resolve(output);
+                                    }).catch(function (err) {
+                                        reject(err);
+                                    });
+                                }).catch(function (err) {
+                                    reject(err);
+                                });
+                            }).catch(function (err) {
+                                reject(err);
+                            });
+                        }).catch(function (err) {
+                            reject(err);
+                        });
+                    }
+                }
+                resolve(results); 
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getArrearPayslipprint = function (projectid, monthandyear, payslipno,fksalaryslipid,salaryslipid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getArrearPayslipSalary(projectid, monthandyear, fksalaryslipid).then(function (output1) {
+            jobDal.getArrearPayslipArrear(projectid, monthandyear, payslipno,salaryslipid).then(function (output2) {
+                jobDal.getArrearPayslipDifference(projectid, monthandyear, payslipno,salaryslipid).then(function (output3) {
+                    var finalresult = [];
+                    for(var i = 0;i < output1.length; i++) {
+                        var results = [];
+                        results.push({'members':output1[i]});
+                        console.log('output1[i].salaryslipid',output1[i].salaryslipid);
+                        var filteredapprsup = _.filter(output2, function(item) {
+                            console.log('item.ssid',item.ssid);
+                            if(output1[i].salaryslipid == item.ssid ) {
+                                results.push({'elgible':item});
+                            }
+                        });
+                        var filteredapprsup1 = _.filter(output3, function(item1) {
+                            console.log('item1.salaryslipid',item1.ssid);
+                            if(output1[i].salaryslipid == item1.ssid) {
+                                results.push({'diff':item1});
+                            }
+                        });
+                        finalresult.push(results);
+                    }
+                    // console.log('finalresult',finalresult);
+                    resolve(finalresult);
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getArrearPayslipprintAdmin = function (projectid, monthandyear, payslipno,fksalaryslipid,salaryslipid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getPayslipDetails(projectid, monthandyear, payslipno).then(function (output11) {
+            jobDal.getArrearPayslipSalaryAdmin(projectid,output11.fksalaryslipid).then(function (output1) {
+                jobDal.getArrearPayslipArrearAdmin(projectid,payslipno,output11.salaryslipid).then(function (output2) {
+                    jobDal.getArrearPayslipDifferenceAdmin(projectid, monthandyear, payslipno,output11.salaryslipid).then(function (output3) {
+                        var finalresult = [];
+                        for(var i = 0;i < output1.length; i++) {
+                            var results = [];
+                            results.push({'members':output1[i]});
+                            console.log('output1[i].salaryslipid',output1[i].salaryslipid);
+                            var filteredapprsup = _.filter(output2, function(item) {
+                                console.log('item.ssid',item.ssid);
+                                if(output1[i].salaryslipid == item.ssid ) {
+                                    results.push({'elgible':item});
+                                }
+                            });
+                            var filteredapprsup1 = _.filter(output3, function(item1) {
+                                console.log('item1.salaryslipid',item1.ssid);
+                                if(output1[i].salaryslipid == item1.ssid) {
+                                    results.push({'diff':item1});
+                                }
+                            });
+                            finalresult.push(results);
+                        }
+                        // console.log('finalresult',finalresult);
+                        resolve(finalresult);
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getArrearClaimprint = function (invoiceno) {
+    return new app.promise(function (resolve, reject) {
+        // jobDal.getOldClaimDetails(invoiceno).then(function (output1) {
+        //     // console.log('output1',output1[0].invoiceid);
+            
+        // }).catch(function (err) {
+        //     reject(err);
+        // });
+        jobDal.getOldClaimBillDetails(invoiceno).then(function (output2) {
+            resolve(output2);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.Bulkprint = function (fromdate,todate,regionid,type) {
+    return new app.promise(function (resolve, reject) {
+        var fromdates = moment(fromdate, "YYYY-MM-DD").subtract(1, 'days');
+        var fromdatess = moment(fromdates).format('YYYY-MM-DD');
+        
+        var todates = moment(todate, "YYYY-MM-DD").add(1, 'days');
+        var todatess = moment(todates).format('YYYY-MM-DD');
+        
+        if(type == 1) {
+            jobDal.getProjectDetailsBySSID(fromdate,todatess,regionid,0).then(function (output1) {
+                var promises = [];
+                var result = [];
+                var results = [];
+                // console.log('output1.',output1);
+                for(var i = 0; i < output1.length;i++) {
+                    promises.push(new Promise((resolve, reject) => {
+                        var res = i;
+                        jobDal.getpayslip(output1[res].projectid,output1[res].monthandyear,output1[res].payslipno).then(function (output2) {
+                            results.push(output2);
+                            resolve(output2);
+                        }).catch(function (err) {
+                            reject(err);
+                        });
+                    }))   
+                }
+                app.promise.all(promises).then(function () {
+                    result.push({'result':results,'type':1});
+                    resolve(result);
+                });  
+            }).catch(function (err) {
+                reject(err);
+            });
+        } else if(type == 2) {
+            jobDal.getProjectDetailsByINVID(fromdate,todatess,regionid,0).then(function (output1) {
+                var promises = [];
+                var result = [];
+                var results = [];
+                for(var i = 0; i < output1.length;i++) {
+                    promises.push(new Promise((resolve, reject) => {
+                        var res = i;
+                        getinvoices(output1[res].invoiceno).then(function (output3) {
+                            results.push(output3);
+                            resolve(output3);
+                        }).catch(function (err) {
+                            reject(err);
+                        });
+                    }))   
+                }
+                app.promise.all(promises).then(function () {
+                    result.push({'result':results,'type':2});
+                    resolve(result);
+                });  
+            }).catch(function (err) {
+                reject(err);
+            });
+        } else if (type == 3) { 
+            jobDal.getProjectDetailsBySSID(fromdate,todatess,regionid,1).then(function (output1) {
+                var promises = [];
+                var result = [];
+                var results = [];
+                for(var i = 0; i < output1.length;i++) {
+                    promises.push(new Promise((resolve, reject) => {
+                        var res = i;
+                        jobBal.getArrearPayslipprint(output1[res].projectid,output1[res].monthandyear,output1[res].payslipno,output1[res].fksalaryslipid,output1[res].salaryslipid).then(function (output2) {
+                            results.push(output2);
+                            resolve(output2);
+                        }).catch(function (err) {
+                            reject(err);
+                        });
+                    }))   
+                }
+                app.promise.all(promises).then(function () {
+                    result.push({'result':results,'type':3});
+                    resolve(result);
+                });  
+            }).catch(function (err) {
+                reject(err);
+            });
+        }  else if (type == 4) { 
+            jobDal.getProjectDetailsByINVID(fromdatess,todatess,regionid,1).then(function (output1) {
+                var promises = [];
+                var result = [];
+                var results = [];
+                for(var i = 0; i < output1.length;i++) {
+                    promises.push(new Promise((resolve, reject) => {
+                        var res = i;
+                        jobBal.getArrearClaimprint(output1[res].invoiceno).then(function (output3) {
+                            results.push(output3);
+                            resolve(output3);
+                        }).catch(function (err) {
+                            reject(err);
+                        });
+                    }))   
+                }
+                app.promise.all(promises).then(function () {
+                    result.push({'result':results,'type':4});
+                    resolve(result);
+                });  
+            }).catch(function (err) {
+                reject(err);
+            });
+        } 
+
+        // jobDal.getProjectDetailsByID(fromdate,todate,regionid,type).then(function (output1) {
+        //     var promises = [];
+        //     var result = [];
+        //     for(var i = 0; i < output1.length;i++) {
+        //         promises.push(new Promise((resolve, reject) => {
+        //             var res = i;
+        //             var results = [];
+        //             if(type == 1) {
+        //                 jobBal.getArrearPayslipprint(output1[res].projectid,output1[res].monthandyear).then(function (output2) {
+        //                     jobBal.getArrearClaimprint(output1[res].invoiceno).then(function (output3) {
+        //                         results.push({'payslip':output2,'invoice':output3});
+        //                         console.log('results',results);
+        //                         resolve(output3);
+        //                     }).catch(function (err) {
+        //                         reject(err);
+        //                     });
+        //                 }).catch(function (err) {
+        //                     reject(err);
+        //                 });
+        //                 console.log('results--results',results);
+        //                 result.push(results);
+        //             } else {
+        //                 jobDal.getpayslip(output1[res].projectid,output1[res].monthandyear).then(function (output2) {
+        //                     console.log('output2',output2);
+        //                     getinvoices(output1[res].invoiceno).then(function (output3) {
+        //                         console.log('output3',output3);
+        //                         results.push({'payslip':output2,'invoice':output3});
+        //                         resolve(output3);
+        //                     }).catch(function (err) {
+        //                         reject(err);
+        //                     });
+        //                 }).catch(function (err) {
+        //                     reject(err);
+        //                 });
+        //                 result.push(results);
+        //             }
+        //         }))
+        //     }
+        //     app.promise.all(promises).then(function () {
+        //         resolve(result);
+        //     });
+        // }).catch(function (err) {
+        //     reject(err);
+        // });
+    });
+};
+
+module.exports.DownloadECRPrint = function (fromdate,todate,regionid,type) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getSalarySlipDetailsByID(fromdate,todate,regionid,type).then(function (output1) {
+            var fs = require("fs");
+            var filepath = nconf.get('DOWNLOADURL');
+            var filename = Math.floor(new Date() / 1000) +"-ECRUPLOAD.txt";
+            var writeStream = fs.createWriteStream(filepath + filename);
+            for(var i = 0; i < output1.length;i++) {
+                writeStream.write(output1[i].uanno +"#~#"+ output1[i].firstname + + output1[i].lastname +"#~#"+ output1[i].grossamount +"#~#"+ output1[i].epf +"#~#"+ 0 +"#~#"+ output1[i].edli +"#~#"+ 0 +"#~#"+ 0 +"#~#"+ 0 +"#~#"+ output1[i].presentdays +"#~#"+ 0);
+            }
+            writeStream.end();
+            resolve({
+                "filepath": writeStream.path,
+                "filename": filename
+            })
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getProjectDetails = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getProjectDetails().then(function (output1) {
+            resolve(output1);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getattendancereview = function (clientid, projectid, monthandyear, types) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getattendancereview(clientid, projectid, monthandyear, types).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+function exportbankslip (projectdata) {
+
+    
+    return new app.promise(function (resolve, reject) {
+        var fs = require("fs");
+        var promises = [];
+        var filepath = nconf.get('DOWNLOADURL');
+        var acdigit = nconf.get('ACCOUNTDIGIT');
+        var filename = Math.floor(new Date() / 1000) +"-BANKDOWN.txt";
+        var filename1 = Math.floor(new Date() / 1000) +"-BANKSTATEMENT.txt";
+        var filename2 = Math.floor(new Date() / 1000) +"-BANKSTATEMENTWITHOUTACCOUNT.txt";
+        var filename3 = Math.floor(new Date() / 1000) +"-BANKSTATEMENTPROJECTSUMMARY.txt";
+        var fileloc = filepath + filename;
+        var fileloc1 = filepath + filename1;
+        var fileloc2 = filepath + filename2;
+        var fileloc3 = filepath + filename3;
+        var writeStream = fs.createWriteStream(fileloc);
+        var writeStream1 = fs.createWriteStream(fileloc1);
+        var writeStream2 = fs.createWriteStream(fileloc2);
+        var writeStream3 = fs.createWriteStream(fileloc3);
+        settingDal.getsettingvalue('ACNO').then(function (account) {
+            promises.push(new Promise((resolve, reject) => {
+                jobDal.getexportslip(projectdata).then(function (output1) {
+                    var totlength = output1.total.toString().length;
+                    var tollength='\xa0\xa0';
+                   // console.log(totlength);
+                    if(totlength ==10)
+                            {
+                                tollength = '';
+                            }
+                            else if(totlength ==9)
+    
+                            {
+                                tollength = '\xa0';
+                            }
+                            else if(totlength ==8)
+                            {
+                                totlength = '\xa0\xa0';
+                            }
+                            else if(totlength ==7)
+                            {
+                                tollength = '\xa0\xa0\xa0';
+                            }
+                            else if(totlength ==6)
+                            {
+                                tollength = '\xa0\xa0\xa0\xa0';
+                            }
+                    writeStream.write(" "+ account.value + "INR0000    D    "+tollength + output1.total + "Salary\r\n");
+                    var promises = [];
+                    var sallength='\xa0\xa0';
+                //    console.log('dfd',output1.exportslip.length);
+                    for (var i = 0; i < output1.exportslip.length; i++) {
+                      //  console.log('dfd',i,output1.exportslip[i].netpay);
+                        var nplength = output1.exportslip[i].netpay.toString().length;
+                       
+                        if(nplength ==8)
+                            {
+                                sallength = '\xa0\xa0';
+                            }
+                            else if(nplength ==7)
+    
+                            {
+                                sallength = '\xa0\xa0\xa0';
+                            }
+                            else if(nplength ==6)
+                            {
+                                sallength = '\xa0\xa0\xa0\xa0';
+                            }
+                            else if(nplength ==5)
+                            {
+                                sallength = '\xa0\xa0\xa0\xa0\xa0';
+                            }
+                      if(output1.exportslip[i].type ==1)
+                        {
+                            var type = 'Arrear'
+                        }
+                        else{
+                            var type = 'Salary'
+                        }
+                        if(output1.exportslip[i].accountno.length >= acdigit) {
+                            writeStream.write(" " + output1.exportslip[i].accountno + "INR0000    C       " + sallength+output1.exportslip[i].netpay + type+"\r\n");
+                       }
+                    }
+    
+                    //writeStream.end();
+                   
+                  
+    
+                  
+                    resolve({
+                        "filepath": filename1,
+                  
+                    })
+                }).catch(function (err) {
+                    reject(err);
+                });
+         
+               
+            }))
+   promises.push(new Promise((resolve, reject) => {
+           
+               
+                jobDal.getExportSlipReport(projectdata).then(function (output2) {
+
+                  //  console.log(output2);
+                    var actotal = 0;
+                    writeStream1.write("Grams : TEXCO                  TAMILNADU EX-SERVICEMEN’S\r\n");
+                    writeStream1.write("Phone : 22301792               CORPORATION LIMITED (TEXCO)\r\n");
+                    writeStream1.write("        22350900               (A Govt of Tamil Nadu Undertaking) \r\n");
+                    writeStream1.write("        22352947               Major Parameswaran Memorial Building, \r\n");
+                    writeStream1.write("                               No.2, West Mada Street, Srinagar Colony, \r\n");
+                    writeStream1.write("                               Saidapet, Chennai-600 015. \r\n");
+                    writeStream1.write("-------------------------------------------------------------------------------\r\n");  
+                    var spaces = '\xa0\xa0';
+                    var spaces1 = '\xa0';
+                    var spaces3 = '\xa0\xa0';
+                    var otspaces = '\xa0\xa0\xa0\xa0\xa0\xa0';
+                    var otspaces1 = '\xa0\xa0';
+                    var txspace = '\xa0\xa0\xa0\xa0\xa0\xa0';
+                    var prlength='\xa0\xa0\xa0';
+                    var sallength='\xa0\xa0';
+                    var namespace ='\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0'; 
+                    var namespace1='\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0';
+                    writeStream1.write(" S."+spaces+spaces+"Proj"+spaces+spaces+"Texco"+spaces+" Name"+namespace+spaces+spaces1+"No.of"+spaces+otspaces1+spaces1+"Bank"+spaces+spaces+spaces+spaces+spaces3+spaces3+spaces1+ "Amount\r\n");  
+                    
+                    writeStream1.write("No"+spaces+spaces+spaces+"No"+spaces+spaces+spaces+"No"+spaces+spaces+namespace+spaces+otspaces+"Repeat"+spaces+spaces+"A/c.No"+spaces+spaces+spaces+spaces+spaces3+spaces1+" Rs."+spaces+"\r\n"); 
+
+                    writeStream1.write("-------------------------------------------------------------------------------\r\n"); 
+                    var jj =1;
+                    var ttlength = 30;
+                    var slength = 4;
+                    namespace = '';
+                    var snospace = '';
+                   // console.log(output2.exportslip)
+                    for (var i = 0; i < output2.exportslip.length; i++) {
+                        var nlength = output2.exportslip[i].firstname.length; 
+                        var texnlength = output2.exportslip[i].texcono.length; 
+                        var projlength = output2.exportslip[i].projectno.length; 
+                        var nplength = output2.exportslip[i].netpay.toString().length;
+                        var sslength = ttlength - nlength; 
+
+                        if(texnlength ==6)
+                        {
+                            txspace = '\xa0\xa0';
+                        }
+                        else if(texnlength ==5)
+
+                        {
+                            txspace = '\xa0\xa0\xa0';
+                        }
+                        else if(texnlength ==4)
+                        {
+                            txspace = '\xa0\xa0\xa0\xa0';
+                        }
+
+
+                        if(projlength ==6)
+                        {
+                            prlength = '\xa0\xa0';
+                        }
+                        else if(projlength ==5)
+
+                        {
+                            prlength = '\xa0\xa0\xa0';
+                        }
+                        else if(projlength ==4)
+                        {
+                            prlength = '\xa0\xa0\xa0\xa0';
+                        }
+                        else if(projlength ==3)
+                        {
+                            prlength = '\xa0\xa0\xa0\xa0\xa0';
+                        }
+
+                        if(nplength ==6)
+                        {
+                            sallength = '';
+                        }
+                        else if(nplength ==5)
+
+                        {
+                            sallength = '\xa0';
+                        }
+                        else if(nplength ==4)
+                        {
+                            sallength = '\xa0\xa0';
+                        }
+                        else if(nplength ==3)
+                        {
+                            sallength = '\xa0\xa0\xa0';
+                        }
+                        
+                        if(jj > 9 & jj < 100) {
+                            snospace = '\xa0\xa0\xa0'; 
+                        }
+                        else if (jj > 99) {
+                            
+                            snospace = '\xa0\xa0'; 
+                        } else if (jj < 10) {
+                            
+                            snospace = '\xa0\xa0\xa0\xa0'; 
+                        } else {
+                            snospace = '\xa0'; 
+                        }
+                        for (var zz = 3; zz < sslength ; zz++) {  
+                            namespace += '\xa0';
+                        }
+                        if(output2.exportslip[i].accountno.length >= acdigit) {
+                            writeStream1.write(" "+ jj  + snospace + output2.exportslip[i].projectno +  prlength  + output2.exportslip[i].texcono + txspace+  output2.exportslip[i].firstname + namespace + output2.exportslip[i].noofrepeat + otspaces1 + output2.exportslip[i].accountno + otspaces1 +spaces1+ sallength+output2.exportslip[i].netpay+".00" + "  \r\n" );
+                            actotal += parseFloat(output2.exportslip[i].netpay);
+                            jj++;
+                        }     
+                        namespace = '';
+                    }
+
+                    aclength='';
+                    actlength=actotal.toString().length;
+                    if(actlength==6)
+                    {
+                        aclength='\xa0\xa0\xa0\xa0'
+                    }
+                    if(actlength==7)
+                    {
+                        aclength='\xa0\xa0\xa0'
+                    }
+                    if(actlength==8)
+                    {
+                        aclength='\xa0\xa0'
+                    }
+                    if(actlength==9)
+                    {
+                        aclength='\xa0'
+                    }
+                    writeStream1.write("-------------------------------------------------------------------------------\r\n"); 
+                    writeStream1.write( otspaces + otspaces + otspaces + otspaces + otspaces +otspaces+otspaces+ otspaces +'\xa0'+"Total"  + otspaces +spaces+spaces + otspaces1+aclength+actotal+".00" +" \r\n"); 
+                    writeStream1.write("-------------------------------------------------------------------------------\r\n\n\n"); 
+                   // writeStream1.end();
+
+
+                    //console.log('opt2',output2);
+                    writeStream3.write("---------------------------------------------------------------------------\r\n");  
+                    var spaces = '\xa0\xa0';
+                    var otspaces = '\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0';
+                    var txspace = '\xa0\xa0\xa0\xa0\xa0\xa0';
+                    var prlength='\xa0\xa0\xa0';
+                   
+                                
+                    var namespace ='\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0'; 
+                    writeStream3.write(" S.No"+spaces+"Proj No"+spaces+"No.of"+spaces+spaces+" Type(0r)"+namespace+"Amount"+spaces+spaces+spaces+spaces+spaces+"Remarks\r\n");    
+                    writeStream3.write(spaces+spaces+spaces+spaces+txspace+"Strength"+spaces+spaces+"Mon&Yr"+namespace+spaces+spaces+spaces+spaces+spaces+"\r\n");                          
+                    writeStream3.write("---------------------------------------------------------------------------\r\n") 
+                    var jj =1;
+                    var ttlength = 30;
+                    var slength = 4;
+                    namespace = '';
+                    var snospace = '';
+                    var actotals = 0;
+                    for (var i = 0; i < output2.projs.length; i++) {
+                       
+                        var projlength = output2.projs[i].projectno.length; 
+                        var nplength = output2.projs[i].totalamountproj.toString().length;
+                        var strlength = output2.projs[i].totalstrengh.toString().length;
+                        var sslength =5; 
+                        var strlengths='\xa0\xa0\xa0\xa0\xa0\xa0\xa0'; 
+                        var sallength='\xa0\xa0';
+
+                        if(projlength ==6)
+                        {
+                            prlength = '\xa0\xa0';
+                        }
+                        else if(projlength ==5)
+
+                        {
+                            prlength = '\xa0\xa0\xa0';
+                        }
+                        else if(projlength ==4)
+                        {
+                            prlength = '\xa0\xa0\xa0\xa0';
+                        }
+                        else if(projlength ==3)
+                        {
+                            prlength = '\xa0\xa0\xa0\xa0\xa0';
+                        }
+
+                        if(nplength ==6)
+                        {
+                            sallength = '\xa0';
+                        }
+                        else if(nplength ==7)
+
+                        {
+                            sallength = '';
+                        }
+                        else if(nplength ==5)
+
+                        {
+                            sallength = '\xa0\xa0';
+                        }
+                        else if(nplength ==4)
+                        {
+                            sallength = '\xa0\xa0\xa0';
+                        }
+                        else if(nplength ==3)
+                        {
+                            sallength = '\xa0\xa0\xa0\xa0';
+                        }
+                        
+
+                        if(strlength ==2)
+                        {
+                            strlengths= '\xa0\xa0\xa0\xa0\xa0\xa0';
+                        }
+                        else if(strlength ==3)
+
+                        {
+                            strlengths = '\xa0\xa0\xa0\xa0\xa0';
+                        }
+                        
+                        
+
+
+                        if(jj > 9 & jj < 100) {
+                            snospace = '\xa0\xa0'; 
+                        }
+                        else if (jj > 99) {
+                            
+                            snospace = '\xa0'; 
+                        } else {
+                            snospace = '\xa0\xa0\xa0'; 
+                        }
+                        for (var zz = 0; zz < sslength ; zz++) {  
+                            namespace += '\xa0';
+                        }
+                        
+                        //if(output2.exportslip[i].accountno.length > acdigit) {
+                            writeStream3.write(" "+ jj + spaces + snospace + output2.projs[i].projectno +  prlength + spaces+spaces + output2.projs[i].totalstrengh + strlengths+  output2.projs[i].monthandyear + otspaces + sallength+spaces+output2.projs[i].totalamountproj+".00" + "  \r\n" );
+
+                          
+                            actotals += parseFloat(output2.projs[i].totalamountproj);
+                            
+                            jj++;
+                        //}     
+              
+                        namespace = '';
+                    }
+
+                    aclength='';
+                    actlength=actotal.toString().length;
+                    if(actlength==6)
+                    {
+                        aclength='\xa0\xa0\xa0'
+                    }
+                    if(actlength==7)
+                    {
+                        aclength='\xa0\xa0'
+                    }
+                    if(actlength==8)
+                    {
+                        aclength='\xa0'
+                    }
+                    if(actlength==9)
+                    {
+                        aclength=''
+                    }
+
+                    writeStream3.write("---------------------------------------------------------------------------\r\n") 
+                    writeStream3.write( otspaces + otspaces + spaces +spaces+spaces+ "Total" + otspaces  +aclength+ actotals+".00" + " \r\n"); 
+                    writeStream3.write("---------------------------------------------------------------------------\r\n") 
+                   // writeStream3.end();
+                 
+                   resolve({
+                    "filepath": filename2,
+              
+                })
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }))
+            promises.push(new Promise((resolve, reject) => {
+
+                jobDal.getExportSlipReportWithoutAccountNO(projectdata).then(function (output3) {
+                    var nonactotal = 0;
+                    writeStream2.write("------------------------ BANK STATEMENT WITHOUT AC NO -------------------------\r\n\r\n");
+                    writeStream2.write("-------------------------------------------------------------------------------\r\n")  
+                    var spaces = '\xa0\xa0\xa0\xa0';
+                    var spaces2 = '\xa0\xa0';
+                    var spaces1 = '\xa0';
+                    var otspaces = '\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0';
+                    var txspace = '\xa0\xa0\xa0';
+                    var prlength='\xa0\xa0\xa0\xa0\xa0\xa0';
+                    var namespace ='\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0'; 
+                    var sallength='\xa0\xa0';
+                    writeStream2.write(" S.No"+spaces+"Proj No"+spaces+"Texco No"+spaces+"Name"+namespace+"No.ofRepeat" +spaces1+ "Amount Rs.\r\n");                             
+                    // writeStream1.write("----------------------------------------------------------------------------------------------------------\r\n"); 
+                    var ttlength = 30;
+                    namespace = '';
+                    // writeStream1.write("------------------------------------------------------------------------------------------------------------\r\n"); 
+                    var k = 1; 
+                    var snospace = '';
+                    for (var j = 0; j < output3.exportslip.length; j++) {
+                        var nlength = output3.exportslip[j].firstname.length; 
+                        var projlength = output3.exportslip[j].projectno.length;
+                        var nplength = output3.exportslip[j].netpay.toString().length;
+                        var sslength = ttlength - nlength;
+
+                        if(k > 9) {
+                            snospace = '\xa0\xa0'; 
+                        } else {
+                            snospace = '\xa0\xa0\xa0'; 
+                        }
+
+                        if(projlength ==6)
+                        {
+                            prlength = '\xa0\xa0\xa0\xa0\xa0';
+                        }
+                        else if(projlength ==5)
+
+                        {
+                            prlength = '\xa0\xa0\xa0\xa0\xa0\xa0';
+                        }
+                        else if(projlength ==4)
+                        {
+                            prlength = '\xa0\xa0\xa0\xa0\xa0\xa0\xa0';
+                        }
+                        
+                        if(nplength ==6)
+                        {
+                            sallength = '';
+                        }
+                        else if(nplength ==5)
+
+                        {
+                            sallength = '\xa0';
+                        }
+                        else if(nplength ==4)
+                        {
+                            sallength = '\xa0\xa0';
+                        }
+                        else if(nplength ==3)
+                        {
+                            sallength = '\xa0\xa0\xa0';
+                        }
+
+                        for (var zz = 0; zz < sslength ; zz++) {  
+                            namespace += '\xa0';
+                        } 
+                        if(output3.exportslip[j].accountno == 0 || output3.exportslip[j].accountno == '' || output3.exportslip[j].accountno == null || output3.exportslip[j].accountno.length < acdigit) {
+                            writeStream2.write(" "+ k + snospace +spaces  + output3.exportslip[j].projectno + prlength  + output3.exportslip[j].texcono + txspace + spaces2 + output3.exportslip[j].firstname + namespace + output3.exportslip[j].noofrepeat + spaces  + sallength+ output3.exportslip[j].netpay +".00"+ "  \r\n" );
+                            nonactotal += parseFloat(output3.exportslip[j].netpay);
+                            k++;
+                        }     
+                        namespace = '';   
+                    }
+                    writeStream2.write("----------------------------------------------------------------------------------\r\n"); 
+                    writeStream2.write("                                         Total                    " + nonactotal +".00"+ " \r\n");
+                    writeStream2.write("----------------------------------------------------------------------------------\r\n"); 
+                    resolve({
+                        "filepath": filename3,
+                  
+                    })
+                }).catch(function (err) {
+                    reject(err);
+                });
+            })) 
+
+            app.promise.all(promises).then(function () {
+                resolve({
+                    "filepath": filename1,
+                    "filename": filename,
+                    "filename2": filename2,
+                    "filename3": filename3
+              
+          
+        })
+    });
+}).catch(function (err) {
+    reject(err);
+});
+})
+    };
+
+function generateinvoices (projectid, monthandyear) {
+  // console.log('projectid, monthandyear',projectid, monthandyear);
+    return new app.promise(function (resolve, reject) {
+        jobDal.getinvoiceexist(projectid, monthandyear).then(function (result2) {
+            jobDal.generateinvoice(projectid, monthandyear).then(function (result) {
+                console.log(result);
+                jobDal.getnumberofpayslip('INVNO').then(function (output) {
+                    result[0].invoiceno = output.salaryslipno;
+                    jobDal.invoice(result[0]).then(function (result1) {
+                        jobDal.invoicedetails(result[0].totalduties, result1.invoiceid).then(function (result1) {
+                            jobDal.updateattendancestatusinvoice(projectid, monthandyear,3).then(function (output) {
+                                result[0].invoiceno = parseInt(result[0].invoiceno) +parseInt(1);
+                                jobDal.updatepayslipno(result[0].invoiceno,'INVNO').then(function (output1) {
+                                    resolve(output);
+                                }).catch(function (err) {
+                                    reject(err);
+                                });
+                            }).catch(function (err) {
+                                reject(err);
+                            });
+                        }).catch(function (err) {
+                            reject(err);
+                        });
+                    }).catch(function (err) {
+                        reject(err);
+                    });
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+}
+
+function getinvoices (invoiceno) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getinvoice(invoiceno).then(function (result) {
+            jobDal.getjobMasterDetails().then(function (results) {
+                result[0].masters = results;
+                jobDal.getdriverforinvoice(result[0].projectid, result[0].monthandyear).then(function (output) {
+                    result[0].drivers = output;
+                    resolve(result)
+                }).catch(function (err) {
+                    reject(err);
+                });
+            }).catch(function (err) {
+                reject(err);
+            });
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+module.exports.getjobmasterVACStatus = function () {
+    return new app.promise(function (resolve, reject) {
+        jobDal.getjobmasterVACStatus().then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+
+module.exports.cancelPostingOrder = function (memberhistoryid, memberid) {
+    return new app.promise(function (resolve, reject) {
+        jobDal.cancelPostingOrder(memberhistoryid, memberid).then(function (result) {
+            resolve(result)
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+}
+
+
+// module.exports.createjobactivitycode = function (jobactivity, code, inplace, othercat, ipaddress) {
+//     return new app.promise(function (resolve, reject) {
+//         checkEligibility(jobactivity.memberid, code).then(function (result) {
+//             if (result == "success") { 
+//                 var inplaceval = (inplace ? inplace : '');
+//                 var othercatval = (othercat ? othercat : '');
+//                 var iswaiting=0;
+//                 var fillvacnacy=0;
+//                 var noofvacancy=0;
+//                 var waitvacancy=0;
+//                 var curentvacnacy=0;
+//                 var jobstatuscode=0;
+//                 var registernno=0;  
+//                 var totalrows =0;
+//                 var jobcode = code;
+//                 jobactivity.changedby ="User";
+//                 var weeklyjobscount = nconf.get('WEEKLYJOBCOUNT');
+//                 //First - Check the selected job status
+//                 jobDal.checkjobactivestatus(jobactivity.jobpostingdetailid).then(function (result0) { 
+//                     //if received response received as 1 job is closed.
+//                     // fillvacnacy = result0.data.filledvacancies;
+//                     // noofvacancy = result0.data.numberofvacancies;
+//                     // waitvacancy = result0.data.waitingvacancies;
+//                     if(result0.status == "1") {
+//                         reject("Vacancy already closed. Please check in vacancy");
+//                     } else {   
+//                         // job is active 
+//                         jobDal.checkselectedjobappliedstatus(jobactivity.memberid,jobactivity.jobpostingdetailid).then(function (result1) { 
+//                             // if person already applied the same job appliedcounts is 0 execute the next process
+//                             if(parseInt(result1.data[0].appliedcounts) == 0) {
+//                                 jobDal.checkweeklyappliedjobstatus(jobactivity.memberid).then(function (result2) {
+//                                     registernno = result2.data[0].registerationno;
+//                                     totalrows = result2.data[0].totalappliedcount;
+//                                     // checking the applied count for week
+//                                     if(parseInt(totalrows) < weeklyjobscount) {
+//                                         // if other than sg,dvr,oa default status wait
+//                                         if (jobcode != 'SG' && jobcode != 'DVR' && jobcode != 'OA') {  
+//                                             iswaiting=1;
+//                                             jobDal.jobapplyprocedure(iswaiting,waitvacancy,fillvacnacy,noofvacancy,jobstatuscode,inplaceval, othercatval, ipaddress,registernno,totalrows,jobactivity).then(function (output) {
+//                                                 var appcount = (output[1][0].appliedcount ? parseInt(output[1][0].appliedcount) : 0);
+//                                                 var dt = [{"status": output[0][0].status,"jobactivityid": output[1][0].jobactivityid,"appliedcount": appcount,"rejected": output[2][0].rejected}]; 
+//                                                 var sendsms = nconf.get('SEND_SMS');
+//                                                 var sendsmslog = nconf.get('ADD_SMS_LOG');
+//                                                 // console.log("sendsms",sendsms);
+//                                                 if(sendsms == 1) {
+//                                                     SendSMS(output[1][0].jobactivityid).then(function (result) {
+//                                                         resolve(dt);
+//                                                     }).catch(function (err) {
+//                                                         logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+//                                                         resolve(dt); 
+//                                                     });
+//                                                 } else if(sendsmslog == 1) { 
+//                                                     addSMSLog(output[1][0].jobactivityid).then(function (result) {
+//                                                         resolve(dt);
+//                                                     }).catch(function (err) {
+//                                                         logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+//                                                         resolve(dt); 
+//                                                     });
+//                                                 } else {
+//                                                     resolve(dt);  
+//                                                 }
+//                                             }).catch(function (err) {
+//                                                 logger.debug("jobapplyprocedure BAL - Date "+new Date()+" "+err);
+//                                                 reject(err);
+//                                             });
+//                                         } else { 
+//                                             jobDal.checkoneyearstatus(jobactivity.memberid).then(function (result3) {
+//                                                 console.log("output",result3.data[0].isvalid);
+//                                                 if(parseInt(result3.data[0].isvalid) >= 1 ) {
+//                                                     iswaiting=1;
+//                                                     jobDal.jobapplyprocedure(iswaiting,waitvacancy,fillvacnacy,noofvacancy,jobstatuscode,inplaceval, othercatval, ipaddress,registernno,totalrows,jobactivity).then(function (output) {
+//                                                         var appcount = (output[1][0].appliedcount ? parseInt(output[1][0].appliedcount) : 0);
+//                                                         var dt = [{"status": output[0][0].status,"jobactivityid": output[1][0].jobactivityid,"appliedcount": appcount,"rejected": output[2][0].rejected}];
+//                                                         var sendsms = nconf.get('SEND_SMS');
+//                                                         var sendsmslog = nconf.get('ADD_SMS_LOG');
+//                                                         // console.log("sendsms",sendsms);
+//                                                         if(sendsms == 1) {
+//                                                             SendSMS(output[1][0].jobactivityid).then(function (result) {
+//                                                                 resolve(dt);
+//                                                             }).catch(function (err) {
+//                                                                 logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+//                                                                 reject(err);
+//                                                             });
+//                                                         } else if(sendsmslog == 1) { 
+//                                                             addSMSLog(output[1][0].jobactivityid).then(function (result) {
+//                                                                 resolve(dt);
+//                                                             }).catch(function (err) {
+//                                                                 logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+//                                                                 resolve(dt); 
+//                                                             });
+//                                                         }  else {
+//                                                             resolve(dt);  
+//                                                         }
+//                                                     }).catch(function (err) {
+//                                                         logger.debug("jobapplyprocedure BAL - Date "+new Date()+" "+err);
+//                                                         reject(err);
+//                                                     });
+//                                                 } else {
+//                                                     jobDal.checkagreementstatus(jobactivity.clientid).then(function (result4) { 
+//                                                         if (result4.data[0].wagetype == 'DGR VALUE') {
+//                                                             jobDal.checkmemberexperiencestatus(jobactivity.memberid).then(function (result5) { 
+//                                                                 iswaiting = result5.iswaiting;
+//                                                                 jobDal.jobapplyprocedure(iswaiting,waitvacancy,fillvacnacy,noofvacancy,jobstatuscode,inplaceval, othercatval, ipaddress,registernno,totalrows,jobactivity).then(function (output) {
+//                                                                     var appcount = (output[1][0].appliedcount ? parseInt(output[1][0].appliedcount) : 0);
+//                                                                     var dt = [{"status": output[0][0].status,"jobactivityid": output[1][0].jobactivityid,"appliedcount": appcount,"rejected": output[2][0].rejected}];
+//                                                                     var sendsms = nconf.get('SEND_SMS');
+//                                                                     var sendsmslog = nconf.get('ADD_SMS_LOG');
+//                                                                     // console.log("sendsms",sendsms);
+//                                                                     if(sendsms == 1) {
+//                                                                         SendSMS(output[1][0].jobactivityid).then(function (result) {
+//                                                                             resolve(dt);
+//                                                                         }).catch(function (err) {
+//                                                                             logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+//                                                                             reject(err);
+//                                                                         });
+//                                                                     }  else if(sendsmslog == 1) { 
+//                                                                         addSMSLog(output[1][0].jobactivityid).then(function (result) {
+//                                                                             resolve(dt);
+//                                                                         }).catch(function (err) {
+//                                                                             logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+//                                                                             resolve(dt); 
+//                                                                         });
+//                                                                     }  else {
+//                                                                         resolve(dt);  
+//                                                                     }
+//                                                                 }).catch(function (err) {
+//                                                                     logger.debug("jobapplyprocedure BAL - Date "+new Date()+" "+err);
+//                                                                     reject(err);
+//                                                                 });
+//                                                             }).catch(function (err) {
+//                                                                 logger.debug("checkmemberexperiencestatus BAL - Date "+new Date()+" "+err);
+//                                                                 reject(err);
+//                                                             });
+//                                                         } else { 
+//                                                             jobDal.jobapplyprocedure(iswaiting,waitvacancy,fillvacnacy,noofvacancy,jobstatuscode,inplaceval, othercatval, ipaddress,registernno,totalrows,jobactivity).then(function (output) {
+//                                                                 var appcount = (output[1][0].appliedcount ? parseInt(output[1][0].appliedcount) : 0);
+//                                                                 var dt = [{"status": output[0][0].status,"jobactivityid": output[1][0].jobactivityid,"appliedcount": appcount,"rejected": output[2][0].rejected}];
+//                                                                 var sendsms = nconf.get('SEND_SMS');
+//                                                                 var sendsmslog = nconf.get('ADD_SMS_LOG');
+//                                                                 // console.log("sendsms",sendsms);
+//                                                                 if(sendsms == 1) {
+//                                                                     SendSMS(output[1][0].jobactivityid).then(function (result) {
+//                                                                         resolve(dt);
+//                                                                     }).catch(function (err) {
+//                                                                         logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+//                                                                         reject(err);
+//                                                                     });
+//                                                                 } else if(sendsmslog == 1) { 
+//                                                                     addSMSLog(output[1][0].jobactivityid).then(function (result) {
+//                                                                         resolve(dt);
+//                                                                     }).catch(function (err) {
+//                                                                         logger.debug("SendSMS BAL - Date "+new Date()+" "+err);
+//                                                                         resolve(dt); 
+//                                                                     });
+//                                                                 }  else {
+//                                                                     resolve(dt);  
+//                                                                 }
+//                                                             }).catch(function (err) {
+//                                                                 logger.debug("jobapplyprocedure BAL - Date "+new Date()+" "+err);
+//                                                                 reject(err);
+//                                                             });
+//                                                         }
+//                                                     }).catch(function (err) {
+//                                                         logger.debug("checkagreementstatus BAL - Date "+new Date()+" "+err);
+//                                                         reject(err);
+//                                                     });
+//                                                 }
+//                                             }).catch(function (err) {
+//                                                 reject(err);
+//                                             });
+//                                         }
+//                                     } else {
+//                                         // if person already one job for the week
+//                                         reject("You Already applied maximum limit of job for this week");
+//                                     }
+//                                 }).catch(function (err) {
+//                                     logger.debug("checkweeklyappliedjobstatus BAL - Date "+new Date()+" "+err);
+//                                     reject(err);
+//                                 });
+//                             } else {
+//                                 // if person already applied the same job then appliedcounts is 1
+//                                 reject("Already you applied for this job");
+//                             }
+//                         }).catch(function (err) {
+//                                logger.debug("checkselectedjobappliedstatus BAL - Date "+new Date()+" "+err);
+//                             reject(err);
+//                         });
+//                     }
+//                 }).catch(function (err) {
+//                     logger.debug("createjobactivitycode  BAL - Date "+new Date()+" "+err);
+//                     reject(err);
+//                 });
+//             } else {
+                
+//             }
+//         }).catch(function (err) {
+//             reject(err);
+//         });
+//     });
+// };

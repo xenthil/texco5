@@ -1,0 +1,89 @@
+/api/job/jobactivity/applied -- JobDal - getjobapplied
+
+optimized query - 
+    SELECT
+        ja.jobactivityid,
+        jpd.jobpostingid,
+        ja.jobpostingdetailid,
+        ja.registrationno,
+        ja.memberid,
+        ja.ipaddress,
+        DATE_FORMAT(ja.effectivedate,
+        '%d-%m-%Y %T') AS effectivedate,
+        m.firstname,
+        m.lastname,
+        trade.description AS trade,
+        m.texcono,
+        DATE_FORMAT(m.dob,
+        '%d %b %Y') AS dob,
+        m.serviceno,
+        ja.clientid,
+        cl.organization AS client,
+        cl.addressline1 AS addrees1,
+        cl.addressline2 AS addrees2,
+        cl.addressline3 AS addrees3,
+        ja.projectid,
+        pr.projectno,
+        pr.name AS projectname,
+        pr.districtid,
+        district.description AS district,
+        pr.regionid,
+        region.description AS region,
+        ja.currentvacancies,
+        jobstatus.description AS jobstatus,
+        ja.jobstatuscode,
+        ja.texcono AS newtexcono,
+        jpd.jobmasterid,
+        jm.code,
+        jm.name,
+        jm.monthlywages,
+        jm.workinghours,
+        jm.servicecharge,
+        jm.servicetax,
+        jpd.comments,
+        jpd.inplace,
+        ja.inplace AS postinginplace,
+        ja.isrejected 
+    FROM
+        jobactivity ja 
+    INNER JOIN
+        jobpostingdetail jpd 
+            ON jpd.jobpostingdetailid = ja.jobpostingdetailid 
+            AND jpd.active = 1 
+    INNER JOIN
+        client cl 
+            ON cl.clientid = ja.clientid 
+            AND cl.active = 1 
+    INNER JOIN
+        project pr 
+            ON pr.projectid = ja.projectid 
+            AND cl.active = 1 
+    INNER JOIN
+        member m 
+            ON m.memberid = ja.memberid 
+            AND m.active = 1 
+    INNER JOIN
+        jobmaster jm 
+            ON jm.jobmasterid = jpd.jobmasterid 
+            AND jpd.active = 1 
+    INNER JOIN
+        lookupvalue district 
+            ON district.lkvalid = pr.districtid 
+            AND district.active = 1 
+    INNER JOIN
+        lookupvalue region 
+            ON region.lkvalid = pr.regionid 
+            AND region.active = 1 
+    LEFT JOIN
+        lookupvalue trade 
+            ON trade.lkvalid = m.tradeid 
+            AND trade.active = 1 
+    INNER JOIN
+        lookupvalue jobstatus 
+            ON jobstatus.code = ja.jobstatuscode 
+            AND jobstatus.lkdmncode = 'JOBST' 
+            AND jobstatus.code != 4 
+            AND ja.jobstatuscode != 5 
+            AND jobstatus.active = 1 
+    WHERE
+        ja.active = 1 AND jpd.close = 1 ORDER BY ja.registrationno                                                                                                                                                                                   
