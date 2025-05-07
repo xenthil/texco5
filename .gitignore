@@ -8,7 +8,19 @@ application/logs/*
 !application/logs/index.html
 !application/logs/.htaccess
 
-node_modules
+# Dependencies and package files
+/node_modules
+/services1/node_modules
+/vendor
+*.lock
+package-lock.json
+composer.lock
+
+# Environment files
+.env
+.env.*
+
+*.log
 
 composer.lock
 

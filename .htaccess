@@ -1,6 +1,20 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Protect sensitive directories and files
+    RedirectMatch 403 ^/assets/document/?$
+    RedirectMatch 403 ^/(.*)\.env
+    RedirectMatch 403 ^/(.*)\.config
+    RedirectMatch 403 ^/(.*)\.ini
+    RedirectMatch 403 ^/(.*)\.log
+    RedirectMatch 403 ^/(.*)/config/.*$
+    
+    # Block access to sensitive folders
+    RewriteRule ^(application|system|utils|services1) - [F,L]
+    
+    # Block direct access to any dot files/directories (like .git, .env)
+    RewriteRule (^\.|/\.) - [F]
     
     # Handle OPTIONS requests for CORS preflight
     RewriteCond %{REQUEST_METHOD} OPTIONS
@@ -14,6 +28,11 @@
 
 # Add CORS headers for OPTIONS requests
 <IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+
     <FilesMatch ".(php)$">
         SetEnvIf Origin "^http(s)?://(.+\.)?(localhost:80|localhost:8080|localhost:8030|13\.126\.144\.36|yourdomain\.com)$" CORS_ALLOW_ORIGIN=$0
         Header set Access-Control-Allow-Origin %{CORS_ALLOW_ORIGIN}e env=CORS_ALLOW_ORIGIN
@@ -26,6 +45,41 @@
         Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" env=CORS_ALLOW_ORIGIN
     </FilesMatch>
 </IfModule>
+
+# Disable directory browsing
+Options -Indexes
+
+# Disable access to specific file types
+<FilesMatch "\.(env|config|ini|log|sh|sql|json)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Restrict access to PHP files in /assets directory
+<FilesMatch ".+\.ph(p[345]?|t|tml)$">
+    # Apache < 2.3
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+        Satisfy All
+    </IfModule>
+    # Apache ≥ 2.3
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>
+
+# Protect package files and other sensitive config files
+<FilesMatch "^(package\.json|package-lock\.json|composer\.json|composer\.lock)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Additional protection for json files in specific paths
+<LocationMatch "^/(node_modules|vendor)/">
+    Order allow,deny
+    Deny from all
+</LocationMatch>
 
 # Disable caching for pages with sensitive data (like raw IDs)
 <FilesMatch "\.(php|html)$">
