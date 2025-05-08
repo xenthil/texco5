@@ -65,6 +65,8 @@ const corsOptions = {
 	optionsSuccessStatus: 200 // Some legacy browsers choke on 204
 };
 
+app.use(require('./middleware/xssSanitizer'));
+
 // Apply CORS globally
 app.use(cors(corsOptions));
 

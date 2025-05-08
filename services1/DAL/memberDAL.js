@@ -424,43 +424,24 @@ module.exports.getmemberinfo = function (texserno,memberid) {
                     WHERE m.active = 1 AND m.memberid = ?;
                 */
             });  
-            // (m.serviceno = ? OR m.texcono = ? ) AND (length(m.serviceno) > 0 OR length(m.texcono) > 0)
+
             con.query(query, [memberid]).then(function (rows, fields) {
                 var rowsReturned = rows.length;
                 var member = {}; 
                 if (rowsReturned > 0) {
-                    // var member = new memberModel.memberinfo(rows[0].memberid, rows[0].firstname, rows[0].lastname, rows[0].fathername, rows[0].dob, rows[0].email, rows[0].mobile, rows[0].address, rows[0].village, rows[0].talukid, rows[0].stateid, rows[0].countryid, rows[0].pincode, rows[0].addressstatus, rows[0].communicationaddress, rows[0].aadhaarno, rows[0].genderid, rows[0].districtid, rows[0].regionid, rows[0].doj, rows[0].accountno, rows[0].nominee, rows[0].nomineerelationid, rows[0].rankid, rows[0].corpsid, rows[0].tradeid, rows[0].esmidno, rows[0].characterid, rows[0].religionid, rows[0].casteid, rows[0].civilqual, rows[0].armyqual, rows[0].dependentstatus, rows[0].dependentname, rows[0].nationality, rows[0].changedby, rows[0].registrationno, rows[0].lastaccess, rows[0].serviceno, rows[0].texcono, rows[0].taluk, rows[0].state, rows[0].country, rows[0].nomineerelation, rows[0].rank, rows[0].corps, rows[0].trade, rows[0].district, rows[0].region, rows[0].character, rows[0].religion, rows[0].caste, rows[0].active, rows[0].branchcode,rows[0].branchname,rows[0].ifsccode);
-                   
-                    if(rows[0].loginstatus==0)
-                    {
-
-                        // con.query("UPDATE member SET loginstatus = 1 WHERE memberid = ?;INSERT INTO login_member( `memberid`) VALUES (?);", [rows[0].memberid,rows[0].memberid]).then(function (rows1, fields) {
-
-                        con.query("INSERT INTO login_member( `memberid`) VALUES (?);", [rows[0].memberid]).then(function (rows1, fields) {
+                    if(rows[0].loginstatus === 0) {
+                        con.query(
+                            "INSERT INTO login_member(`memberid`, `logout_time`) VALUES (?, ?);",
+                            [rows[0].memberid, new Date()]
+                          ).then(function (rows1, fields) {
                             resolve(rows[0]);
-                        }).catch(function (err) {  console.log('err',err);
+                          }).catch(function (err) {
+                            console.log('err', err);
                             reject("");
-                        });
+                          });                          
+                    } else {
+                        reject("User Alredy Logged in"); 
                     }
-                   else
-                   {
-
-                    // var datas = {
-                    //     texcono : rows[0].texcono,
-                    //     ipaddress : 'qwe'
-                       
-                    // };
-
-                    // con.query('INSERT INTO loginuserlog SET ?', datas).then(function (rows, fields) {
-            
-                        
-                    // }).catch(function (err) {  console.log('err',err);
-                    //     reject("User Alredy Logged in"); 
-                    // });
-
-                    reject("User Alredy Logged in"); 
-                   }
-                  //  resolve(rows[0]);
                 }
                 else {
                     reject("Invalid Service No or Texco No");

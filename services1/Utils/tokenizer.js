@@ -1,72 +1,73 @@
-// This module provides functions to generate and verify secure tokens for IDs.
-// It uses the AES-256-CTR encryption algorithm to create a reversible tokenization process.
-// The tokens are generated using a secret key defined in .env file.
-// The purpose is to securely represent sensitive information, such as user IDs, in a way that is not easily guessable or reversible without the secret key.
-// The generated tokens can be used in URLs or APIs to protect sensitive data.
-// The module exports two functions: generateIdToken and verifyIdToken.
-// The generateIdToken function takes an ID (string or number) and returns a secure token.
-// The verifyIdToken function takes a token and returns the original ID.
-// The purpose is to fix the IDOR security vulnerability issues.
-
 const crypto = require('crypto');
+const dotenv = require('dotenv');
 
-const APP_SECRET = 'T3***Cz3R0-==iD0R!@#2025'; // Replace with actual secret key from .env file
+dotenv.config();
 
-/**
- * Generates an irreversible secure token for a given ID.
- * @param {string|number} id - The real ID to tokenize.
- * @returns {string} - The secure token.
- */
+const APP_SECRET = process.env.APP_SECRET || 'T3***Cz3R0-==iD0R!@#2025';
+const TOKEN_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
 function generateIdToken(id) {
-    // Don't attempt to tokenize if id is undefined or null
-    if (id === undefined || id === null) {
-        return null;
-    }
-
+    if (!id) return null;
+    
     try {
-        // Using a fixed IV derived from the secret for simplicity
-        // Note: This is less secure than a random IV but easier to implement
+        const timestamp = Date.now();
+        const nonce = crypto.randomBytes(8).toString('hex');
+        const data = `${id}:${timestamp}:${nonce}`;
+        
         const key = crypto.createHash('sha256').update(String(APP_SECRET)).digest('base64').substr(0, 32);
-        const iv = crypto.createHash('md5').update('fixed_iv_for_' + APP_SECRET).digest();
+        const iv = crypto.randomBytes(16);
         
-        const cipher = crypto.createCipheriv('aes-256-ctr', key, iv);
-        let crypted = cipher.update(id.toString(), 'utf8', 'hex');
-        crypted += cipher.final('hex');
+        const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+        let encrypted = cipher.update(data, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
         
-        return crypted;
+        const authTag = cipher.getAuthTag().toString('hex');
+        return `${iv.toString('hex')}:${encrypted}:${authTag}`;
     } catch (error) {
-        console.error(`Failed to tokenize ${id}:`, error);
-        throw error;
+        console.error('Token generation failed:', error);
+        return null;
     }
 }
 
-/**
- * Decodes a secure token back to the original ID.
- * @param {string} token - The secure token.
- * @returns {string} - The original ID.
- */
 function verifyIdToken(token) {
-    if (!token) {
-        console.log('Warning: Attempted to verify undefined or null token');
-        return null;
-    }
+    if (!token) return null;
     
     try {
-        // Using the same fixed IV derivation as in encryption
-        const key = crypto.createHash('sha256').update(String(APP_SECRET)).digest('base64').substr(0, 32);
-        const iv = crypto.createHash('md5').update('fixed_iv_for_' + APP_SECRET).digest();
+        const [ivHex, encrypted, authTag] = token.split(':');
+        if (!ivHex || !encrypted || !authTag) {
+            throw new Error('Invalid token format');
+        }
         
-        const decipher = crypto.createDecipheriv('aes-256-ctr', key, iv);
-        let dec = decipher.update(token, 'hex', 'utf8');
-        dec += decipher.final('utf8');
-        return dec;
+        const key = crypto.createHash('sha256').update(String(APP_SECRET)).digest('base64').substr(0, 32);
+        const iv = Buffer.from(ivHex, 'hex');
+        
+        const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+        decipher.setAuthTag(Buffer.from(authTag, 'hex'));
+        
+        let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        
+        const [id, timestamp] = decrypted.split(':');
+        
+        // Verify token expiration
+        if (Date.now() - parseInt(timestamp) > TOKEN_EXPIRY) {
+            throw new Error('Token expired');
+        }
+        
+        return id;
     } catch (error) {
-        console.error('Failed to verify token:', error);
-        throw error;
+        console.error('Token verification failed:', error);
+        return null;
     }
+}
+
+// Helper to detect if a string might be a token
+function isToken(str) {
+    return typeof str === 'string' && str.split(':').length === 3;
 }
 
 module.exports = {
     generateIdToken,
-    verifyIdToken
+    verifyIdToken,
+    isToken
 };

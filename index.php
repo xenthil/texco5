@@ -319,4 +319,21 @@ switch (ENVIRONMENT)
  *
  * And away we go...
  */
+
+ // Global input sanitizer (minimal XSS protection)
+function clean_input(&$data) {
+    if (is_array($data)) {
+        foreach ($data as &$val) {
+            clean_input($val);
+        }
+    } else {
+        $data = htmlspecialchars(trim($data), ENT_QUOTES, 'UTF-8');
+    }
+}
+
+clean_input($_GET);
+clean_input($_POST);
+clean_input($_REQUEST);
+clean_input($_COOKIE);
+
 require_once BASEPATH.'core/CodeIgniter.php';

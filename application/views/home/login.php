@@ -14,6 +14,7 @@
 <link rel="stylesheet" type="text/css" href="<?php echo base_url("assets/css/texco.css")?>" />
 <script type="text/javascript" src="<?php echo base_url("assets/libs/jquery/3.7.1/jquery.min.js")?>"></script>
 <script type="text/javascript" src="<?php echo base_url("assets/libs/angular/1.8.2/angular.min.js")?>"></script>
+<script src="<?php echo base_url("assets/js/app/global-interceptor.js")?>"></script>
 <script type="text/javascript" src="<?php echo base_url("assets/libs/materialize/1.0.0/js/materialize.min.js")?>"></script>
 <script type="text/javascript" src="<?php echo base_url("assets/js/app/home.js")?>"></script>
 <script type="text/javascript"> var api_url = "<?php echo config_item('api_url')?>" </script>

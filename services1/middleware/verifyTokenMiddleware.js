@@ -1,35 +1,42 @@
-// This module provides functions to automatically detect and verify any tokens in request parameters or body.
+const { verifyIdToken, isToken } = require('../Utils/tokenizer');
 
-const { verifyIdToken } = require('../Utils/tokenizer');
+function processObject(obj) {
+    if (!obj || typeof obj !== 'object') return;
+    
+    Object.keys(obj).forEach(key => {
+        const value = obj[key];
+        
+        // Handle ID parameters
+        if ((key.endsWith('Id') || key === 'id') && value && isToken(value)) {
+            const decodedId = verifyIdToken(value);
+            if (decodedId) {
+                obj[key] = decodedId;
+            }
+        }
+        
+        // Recursively process nested objects
+        if (value && typeof value === 'object') {
+            processObject(value);
+        }
+    });
+}
 
-/**
- * Middleware to automatically detect and verify any tokens in request parameters or body.
- * If invalid, it will respond with 400 Bad Request.
- */
-function verifyTokensMiddleware(req, res, next) {
+function tokenParamMiddleware(req, res, next) {
     try {
-        const checkAndDecode = (obj) => {
-            if (!obj) return;
-
-            Object.keys(obj).forEach(key => {
-                if (key.toLowerCase().endsWith('idtoken')) {
-                    // Found a token - replace with original ID
-                    const originalKey = key.replace(/Token$/i, '');
-                    obj[originalKey] = verifyIdToken(obj[key]);
-                    delete obj[key]; // Remove the token field for cleanliness
-                }
-            });
-        };
-
-        checkAndDecode(req.query);
-        checkAndDecode(req.body);
-        checkAndDecode(req.params);
-
+        // Process query parameters
+        processObject(req.query);
+        
+        // Process body parameters
+        processObject(req.body);
+        
+        // Process URL parameters
+        processObject(req.params);
+        
         next();
-    } catch (err) {
-        console.error('ID Token verification failed:', err.message);
-        return res.status(400).json({ message: 'Invalid or tampered ID token' });
+    } catch (error) {
+        console.error('Token parameter processing failed:', error);
+        next();
     }
 }
 
-module.exports = verifyTokensMiddleware;
+module.exports = tokenParamMiddleware;
